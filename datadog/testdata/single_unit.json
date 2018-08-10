@@ -1,0 +1,43 @@
+{
+    "from_date": 1531329115000,
+    "group_by": [],
+    "message": "",
+    "query": "system.disk.free{*}",
+    "res_type": "time_series",
+    "resp_version": 1,
+    "series": [
+        {
+            "aggr": null,
+            "attributes": {},
+            "display_name": "system.disk.free",
+            "end": 1531329123000,
+            "expression": "system.disk.free{*}",
+            "interval": 1,
+            "length": 1,
+            "metric": "system.disk.free",
+            "pointlist": [
+                [
+                    1531329123000.0,
+                    91071698534.4
+                ]
+            ],
+            "query_index": 0,
+            "scope": "*",
+            "start": 1531329123000,
+            "unit": [
+                {
+                    "family": "bytes",
+                    "id": 2,
+                    "name": "byte",
+                    "plural": "bytes",
+                    "scale_factor": 1.0,
+                    "short_name": "B"
+                },
+                null
+            ]
+        }
+    ],
+    "status": "ok",
+    "to_date": 1531329145000
+}
+

@@ -1,0 +1,22 @@
+runtime: go
+api_version: go1
+
+env_variables:
+  CONFIG_FILE: "metrics.yaml"
+  # How far to look back while searching for recent data in Stackdriver.
+  # This should be reasonably short to prevent fetching too much data from Stackdriver every time a metric is synced.
+  SD_LOOKBACK_INTERVAL: "1h"
+  # Total timeout for updating all metrics.
+  # App Engine Cron will only issue a single concurrent HTTP request to the app, so if any outgoing API call gets stuck,
+  # no further metric updates will be performed. Having a timeout will ensure such stuck updates get aborted and
+  # later retried.
+  UPDATE_TIMEOUT: "5m"
+  # Name of the Stackdriver project that will be used to report internal ts-bridge metrics (import latencies,
+  # metric age). If empty, the project hosting the ts-bridge App Engine app itself will be used.
+  SD_PROJECT_FOR_INTERNAL_METRICS: ""
+
+handlers:
+- url: /
+  script: _go_app
+- url: /sync
+  script: _go_app

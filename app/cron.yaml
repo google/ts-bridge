@@ -1,0 +1,4 @@
+cron:
+- description: "sync metrics"
+  url: /sync
+  schedule: every 1 mins

@@ -1,0 +1,77 @@
+{
+    "from_date": 1531324625000,
+    "group_by": [],
+    "message": "",
+    "query": "avg:system.net.bytes_rcvd{*}",
+    "res_type": "time_series",
+    "resp_version": 1,
+    "series": [
+        {
+            "aggr": "avg",
+            "attributes": {},
+            "display_name": "system.net.bytes_rcvd",
+            "end": 1531324743000,
+            "expression": "avg:system.net.bytes_rcvd{*}",
+            "interval": 1,
+            "length": 8,
+            "metric": "system.net.bytes_rcvd",
+            "pointlist": [
+                [
+                    1531324638123.000064,
+                    2411.4913024902344
+                ],
+                [
+                    1531324653000.0,
+                    6437.919098615646
+                ],
+                [
+                    1531324668000.0,
+                    13997.37110710144
+                ],
+                [
+                    1531324683000.0,
+                    17190.277000427246
+                ],
+                [
+                    1531324698000.0,
+                    5105.722671508789
+                ],
+                [
+                    1531324713000.0,
+                    4858.579491138458
+                ],
+                [
+                    1531324728000.0,
+                    4552.817460536957
+                ],
+                [
+                    1531324743000.0,
+                    5079.962160110474
+                ]
+            ],
+            "query_index": 0,
+            "scope": "*",
+            "start": 1531324638000,
+            "unit": [
+                {
+                    "family": "bytes",
+                    "id": 2,
+                    "name": "byte",
+                    "plural": "bytes",
+                    "scale_factor": 1.0,
+                    "short_name": "B"
+                },
+                {
+                    "family": "time",
+                    "id": 11,
+                    "name": "second",
+                    "plural": "seconds",
+                    "scale_factor": 1.0,
+                    "short_name": "s"
+                }
+            ]
+        }
+    ],
+    "status": "ok",
+    "to_date": 1531324745000
+}

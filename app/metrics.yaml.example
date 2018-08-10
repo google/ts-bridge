@@ -1,0 +1,15 @@
+datadog_metrics:
+  - name: http_availability
+    query: "sum:http_requests{status:200} / sum:http_requests{*}"
+    api_key: xxx
+    application_key: xxx
+    destination: stackdriver
+  - name: total_bytes_sent
+    query: "system.net.bytes_sent {*}"
+    api_key: xxx
+    application_key: xxx
+    destination: another_stackdriver
+stackdriver_destinations:
+  - name: stackdriver
+  - name: another_stackdriver
+    project_id: "another-projectname"

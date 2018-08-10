@@ -1,0 +1,129 @@
+{
+    "from_date": 1531324301000,
+    "group_by": [
+        "device"
+    ],
+    "message": "",
+    "query": "system.net.bytes_rcvd{*}by{device}",
+    "res_type": "time_series",
+    "resp_version": 1,
+    "series": [
+        {
+            "aggr": null,
+            "attributes": {},
+            "display_name": "system.net.bytes_rcvd",
+            "end": 1531324383000,
+            "expression": "system.net.bytes_rcvd{device:eth0}",
+            "interval": 1,
+            "length": 6,
+            "metric": "system.net.bytes_rcvd",
+            "pointlist": [
+                [
+                    1531324308000.0,
+                    26491.05078125
+                ],
+                [
+                    1531324323000.0,
+                    9895.037109375
+                ],
+                [
+                    1531324338000.0,
+                    6076.1103515625
+                ],
+                [
+                    1531324353000.0,
+                    46067.60546875
+                ],
+                [
+                    1531324368000.0,
+                    19629.77734375
+                ],
+                [
+                    1531324383000.0,
+                    10105.0400390625
+                ]
+            ],
+            "query_index": 0,
+            "scope": "device:eth0",
+            "start": 1531324308000,
+            "unit": [
+                {
+                    "family": "bytes",
+                    "id": 2,
+                    "name": "byte",
+                    "plural": "bytes",
+                    "scale_factor": 1.0,
+                    "short_name": "B"
+                },
+                {
+                    "family": "time",
+                    "id": 11,
+                    "name": "second",
+                    "plural": "seconds",
+                    "scale_factor": 1.0,
+                    "short_name": "s"
+                }
+            ]
+        },
+        {
+            "aggr": null,
+            "attributes": {},
+            "display_name": "system.net.bytes_rcvd",
+            "end": 1531324383000,
+            "expression": "system.net.bytes_rcvd{device:br0}",
+            "interval": 1,
+            "length": 6,
+            "metric": "system.net.bytes_rcvd",
+            "pointlist": [
+                [
+                    1531324308000.0,
+                    47475.25
+                ],
+                [
+                    1531324323000.0,
+                    15832.0517578125
+                ],
+                [
+                    1531324338000.0,
+                    9694.4658203125
+                ],
+                [
+                    1531324353000.0,
+                    17328.5
+                ],
+                [
+                    1531324368000.0,
+                    7243.78271484375
+                ],
+                [
+                    1531324383000.0,
+                    7485.09228515625
+                ]
+            ],
+            "query_index": 0,
+            "scope": "device:br0",
+            "start": 1531324308000,
+            "unit": [
+                {
+                    "family": "bytes",
+                    "id": 2,
+                    "name": "byte",
+                    "plural": "bytes",
+                    "scale_factor": 1.0,
+                    "short_name": "B"
+                },
+                {
+                    "family": "time",
+                    "id": 11,
+                    "name": "second",
+                    "plural": "seconds",
+                    "scale_factor": 1.0,
+                    "short_name": "s"
+                }
+            ]
+        }
+    ],
+    "status": "ok",
+    "to_date": 1531324421000
+}
+

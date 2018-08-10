@@ -1,0 +1,8 @@
+datadog_metrics:
+  - name: metric1
+    query: "query one"
+    api_key: xxx
+    application_key: xxx
+    destination: foo
+stackdriver_destinations:
+  - name: stackdriver

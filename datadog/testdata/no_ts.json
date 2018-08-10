@@ -1,0 +1,11 @@
+{
+    "from_date": 1531324625000,
+    "group_by": [],
+    "message": "",
+    "query": "system.net.bytes_rcvd{node:foobar}",
+    "res_type": "time_series",
+    "resp_version": 1,
+    "series": [],
+    "status": "ok",
+    "to_date": 1531324745000
+}

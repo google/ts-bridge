@@ -1,0 +1,36 @@
+{
+    "from_date": 1531329051000,
+    "group_by": [],
+    "message": "",
+    "query": "system.load.1{*}",
+    "res_type": "time_series",
+    "resp_version": 1,
+    "series": [
+        {
+            "aggr": null,
+            "attributes": {},
+            "display_name": "system.load.1",
+            "end": 1531329063000,
+            "expression": "system.load.1{*}",
+            "interval": 1,
+            "length": 1,
+            "metric": "system.load.1",
+            "pointlist": [
+                [
+                    1531329063000.0,
+                    0.23000000417232513
+                ]
+            ],
+            "query_index": 0,
+            "scope": "*",
+            "start": 1531329063000,
+            "unit": [
+                null,
+                null
+            ]
+        }
+    ],
+    "status": "ok",
+    "to_date": 1531329081000
+}
+
