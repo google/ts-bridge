@@ -125,6 +125,10 @@ the `env_variables` section of `app/app.yaml`.
 * `UPDATE_TIMEOUT`: the total time that updating all metrics is allowed to take.
   The incoming HTTP request from App Engine Cron will fail if it takes longer
   than this, and a subsequent update will be triggered again.
+* `UPDATE_PARALLELISM`: number of metric updates that are performed in parallel.
+  Parallel updates are scheduled using goroutines and still happen in the
+  context of a single incoming HTTP request, and setting this value too high
+  might result in the App Engine instance running out of RAM.
 
 You can use `--env_var` flag to override these environment variables while
 running the app via `dev_appserver.py`.
@@ -138,7 +142,7 @@ metrics to Stackdriver:
   metric has a `metric_name` field.
 * `import_latencies`: total time it took to import all metrics (in ms). If this
   becomes larger than `UPDATE_TIMEOUT`, some metrics might not be imported, and
-  you might need to increase the `UPDATE_TIMEOUT`.
+  you might need to increase `UPDATE_PARALLELISM` or `UPDATE_TIMEOUT`.
 * `oldest_metric_age`: oldest time since the last written point across all metrics
   (in ms). This metric can be used to detect queries that no longer return any
   data.

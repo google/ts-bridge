@@ -185,15 +185,18 @@ func TestMetricImportLatencyMetric(t *testing.T) {
 
 var updateAllMetricsTests = []struct {
 	name             string
+	parallelism      int
 	numMetrics       int
 	numPoints        int
 	wantTotalLatency time.Duration
 	wantOldestAge    time.Duration
 }{
-	{"1 metric, no points", 1, 0, 100 * time.Millisecond, time.Hour + 100*time.Millisecond},
-	{"2 metric, no points", 1, 0, 200 * time.Millisecond, time.Hour + 100*time.Millisecond},
-	{"1 metric, 1 points", 1, 1, 100 * time.Millisecond, 100 * time.Millisecond},
-	{"2 metric, 1 points", 2, 1, 200 * time.Millisecond, 200 * time.Millisecond},
+	{"1 metric, no points", 1, 1, 0, 100 * time.Millisecond, time.Hour + 100*time.Millisecond},
+	{"2 metrics, no points", 1, 2, 0, 200 * time.Millisecond, time.Hour + 200*time.Millisecond},
+	{"1 metric, 1 points", 1, 1, 1, 100 * time.Millisecond, 100 * time.Millisecond},
+	{"2 metrics, 1 points", 1, 2, 1, 200 * time.Millisecond, 200 * time.Millisecond},
+	{"parallelism 5, 5 metrics", 5, 5, 1, 100 * time.Millisecond, 100 * time.Millisecond},
+	{"paralellism 5, 10 metrics", 5, 10, 1, 200 * time.Millisecond, 200 * time.Millisecond},
 }
 
 func TestUpdateAllMetrics(t *testing.T) {
@@ -233,16 +236,15 @@ func TestUpdateAllMetrics(t *testing.T) {
 
 			collector, exporter := fakeStats(t)
 
-			if errs := UpdateAllMetrics(testCtx, config, mockSD, collector); len(errs) > 0 {
+			if errs := UpdateAllMetrics(testCtx, config, mockSD, tt.parallelism, collector); len(errs) > 0 {
 				t.Errorf("UpdateAllMetrics() returned errors: %v", errs)
 			}
 			collector.Close()
 
 			val, ok := exporter.values["ts_bridge/import_latencies"]
 			latency := time.Duration(val.(*view.DistributionData).Mean) * time.Millisecond
-			want := time.Duration(tt.numMetrics*100) * time.Millisecond
-			if !ok || !durationWithin(latency, want, 50*time.Millisecond) {
-				t.Errorf("expected to see import latency around %v; got %v", want, latency)
+			if !ok || !durationWithin(latency, tt.wantTotalLatency, 50*time.Millisecond) {
+				t.Errorf("expected to see import latency around %v; got %v", tt.wantTotalLatency, latency)
 			}
 
 			val, ok = exporter.values["ts_bridge/oldest_metric_age"]
@@ -251,5 +253,32 @@ func TestUpdateAllMetrics(t *testing.T) {
 				t.Errorf("expected oldest metric age around %v; got %v", tt.wantOldestAge, age)
 			}
 		})
+	}
+}
+
+func TestUpdateAllMetricsErrors(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	src := mocks.NewMockSourceMetric(mockCtrl)
+	src.EXPECT().StackdriverName().MaxTimes(100).Return("sd-name")
+	config := &Config{
+		metrics: []*Metric{
+			&Metric{
+				// Having an emoji symbol in metric name should produce an error while defining an OpenCensus tag.
+				Name:   "invalid metric name 🥒",
+				Record: &MetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+				Source: src,
+			},
+		},
+	}
+
+	mockSD := mocks.NewMockStackdriverAdapter(mockCtrl)
+	collector, _ := fakeStats(t)
+	defer collector.Close()
+
+	errs := UpdateAllMetrics(testCtx, config, mockSD, 1, collector)
+	if len(errs) != 1 {
+		t.Errorf("expected UpdateAllMetrics to return an error")
 	}
 }

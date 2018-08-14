@@ -19,6 +19,7 @@ package tsbridge
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.opencensus.io/stats"
@@ -55,21 +56,41 @@ type StackdriverAdapter interface {
 }
 
 // UpdateAllMetrics updates all metrics listed in a given config.
-func UpdateAllMetrics(ctx context.Context, c *Config, sd StackdriverAdapter, s *StatsCollector) (errors []string) {
+func UpdateAllMetrics(ctx context.Context, c *Config, sd StackdriverAdapter, parallelism int, s *StatsCollector) (errors []string) {
 	oldestWrite := time.Now()
 	defer func(start time.Time) {
 		stats.Record(ctx, s.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
 		stats.Record(ctx, s.OldestMetricAge.M(int64(time.Since(oldestWrite)/time.Millisecond)))
 	}(time.Now())
 
+	errchan := make(chan string, len(c.Metrics()))
+	sem := make(chan bool, parallelism)
+	var wg sync.WaitGroup
+
 	for _, m := range c.Metrics() {
-		err := m.Update(ctx, sd, s)
-		if err != nil {
-			errors = append(errors, err.Error())
-		}
+		sem <- true
+		wg.Add(1)
+		go func(metric *Metric) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			err := metric.Update(ctx, sd, s)
+			if err != nil {
+				errchan <- err.Error()
+			}
+		}(m)
+	}
+	wg.Wait()
+	close(errchan)
+
+	// After all metrics are updated, find the oldest write timestamp.
+	for _, m := range c.Metrics() {
 		if m.Record.LastUpdate.Before(oldestWrite) {
 			oldestWrite = m.Record.LastUpdate
 		}
+	}
+	for err := range errchan {
+		errors = append(errors, err)
 	}
 	return errors
 }
