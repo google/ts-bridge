@@ -14,6 +14,8 @@ env_variables:
   # Name of the Stackdriver project that will be used to report internal ts-bridge metrics (import latencies,
   # metric age). If empty, the project hosting the ts-bridge App Engine app itself will be used.
   SD_PROJECT_FOR_INTERNAL_METRICS: ""
+  # Number of metrics to update in parallel. Must be between 1 and 100 (chosen arbitrarily).
+  UPDATE_PARALLELISM: 1
 
 handlers:
 - url: /

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,7 +74,17 @@ func sync(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stats.Close()
 
-	if errs := tsbridge.UpdateAllMetrics(ctx, config, sd, stats); errs != nil {
+	p, err := strconv.Atoi(os.Getenv("UPDATE_PARALLELISM"))
+	if err != nil {
+		logAndReturnError(ctx, w, fmt.Errorf("could not parse UPDATE_PARALLELISM: %v", err))
+		return
+	}
+	if p < 1 || p > 100 {
+		logAndReturnError(ctx, w, fmt.Errorf("expected UPDATE_PARALLELISM between 1 and 100; got %d", p))
+		return
+	}
+
+	if errs := tsbridge.UpdateAllMetrics(ctx, config, sd, p, stats); errs != nil {
 		msg := strings.Join(errs, "; ")
 		logAndReturnError(ctx, w, errors.New(msg))
 		return
