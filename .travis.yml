@@ -1,0 +1,32 @@
+language: go
+go:
+  - "1.10"
+env:
+  - DEP_VERSION="0.5.0"
+install:
+  - |
+    LATEST_SDK="$(curl -fsSL 'https://www.googleapis.com/storage/v1/b/appengine-sdks/o?prefix=featured%2F' |
+    jq -r '([.items[] |
+    select((.name | endswith(".zip")) and (.name | contains("go_appengine_sdk_linux_amd64")))] |
+    sort_by(.timeCreated)) | .[-1:] | .[] | .mediaLink')"
+  - curl -sSLo $HOME/gae_sdk.zip "$LATEST_SDK"
+  - unzip -q $HOME/gae_sdk.zip -d ~
+  - go get github.com/golang/mock/mockgen
+  - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
+  - chmod +x $GOPATH/bin/dep
+before_script:
+  - export PATH=$PATH:"$HOME/go_appengine"
+script:
+  - go test -v ./...
+  - dep check
+  - gofmt -w $(go list -f '{{.Dir}}' ./...)
+  - go generate ./...
+  - |
+      # Check that `gofmt` and `go generate` resulted in no diffs.
+      status=$(git status --porcelain)
+      if [[ -n ${status} ]]; then
+        echo "Regenerated files differ from checked-in versions: ${status}"
+        git status
+        git diff
+        exit 1
+      fi
