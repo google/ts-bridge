@@ -2,27 +2,32 @@
 
 
 [[projects]]
+  digest = "1:173cdda00276d13379ebc355be090d1cb42813a34875a3bd4a277730f94f47a3"
   name = "cloud.google.com/go"
   packages = [
     "compute/metadata",
     "internal/version",
     "monitoring/apiv3",
-    "trace/apiv2"
+    "trace/apiv2",
   ]
+  pruneopts = "UT"
   revision = "aad3f485ee528456e0768f20397b4d9dd941e755"
   version = "v0.25.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:45381144fe0fc2ed4d9687c424e13695ac1aa1614031608f823f93b8fd1bf3bc"
   name = "contrib.go.opencensus.io/exporter/stackdriver"
   packages = [
     ".",
     "monitoredresource",
-    "propagation"
+    "propagation",
   ]
+  pruneopts = "UT"
   revision = "2b93072101d466aa4120b3c23c2e1b08af01541c"
 
 [[projects]]
+  digest = "1:78cc02dd5ba987ae6ade4ac7a1dc6a34d5250689151866a7ab35d596fe1cac59"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -51,30 +56,38 @@
     "private/protocol/query/queryutil",
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
-    "service/sts"
+    "service/sts",
   ]
+  pruneopts = "UT"
   revision = "d1f87361dea69f086010bc3d03c120a602320b97"
   version = "v1.15.4"
 
 [[projects]]
+  digest = "1:2209584c0f7c9b68c23374e659357ab546e1b70eec2761f03280f69a8fd23d77"
   name = "github.com/cenkalti/backoff"
   packages = ["."]
+  pruneopts = "UT"
   revision = "2ea60e5f094469f9e65adb9cd103795b73ae743e"
   version = "v2.0.0"
 
 [[projects]]
+  digest = "1:fe8a03a8222d5b913f256972933d26d24ad7c8286692a42943bc01633cc8fce3"
   name = "github.com/go-ini/ini"
   packages = ["."]
+  pruneopts = "UT"
   revision = "358ee7663966325963d4e8b2e1fbd570c5195153"
   version = "v1.38.1"
 
 [[projects]]
+  digest = "1:bc38c7c481812e178d85160472e231c5e1c9a7f5845d67e23ee4e706933c10d8"
   name = "github.com/golang/mock"
   packages = ["gomock"]
+  pruneopts = "UT"
   revision = "c34cdb4725f4c3844d095133c6e40e448b86589b"
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:0db8755cf5a9f477eaa1a1548c6a8730dcbfc2286fbdec399286ebc4042e3763"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -85,30 +98,38 @@
     "ptypes/empty",
     "ptypes/struct",
     "ptypes/timestamp",
-    "ptypes/wrappers"
+    "ptypes/wrappers",
   ]
+  pruneopts = "UT"
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:e145e9710a10bc114a6d3e2738aadf8de146adaa031854ffdf7bbfe15da85e63"
   name = "github.com/googleapis/gax-go"
   packages = ["."]
+  pruneopts = "UT"
   revision = "317e0006254c44a0ac427cc52a0e083ff0b9622f"
   version = "v2.0.0"
 
 [[projects]]
+  digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
+  pruneopts = "UT"
   revision = "0b12d6b5"
 
 [[projects]]
+  digest = "1:e02006f3cb85f28b9d0879c50a0eeba811884e4ddebfb4c4a1352e3bd98efec1"
   name = "github.com/zorkian/go-datadog-api"
   packages = ["."]
+  pruneopts = "UT"
   revision = "d74ca17e47a9d3708e6203fd48d3f8cdad055e1c"
   version = "v2.10.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:04f6ca3f95ab9761a25227ce90b366602dbb5328269be3c7059edef63eb8162a"
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -123,12 +144,14 @@
     "tag",
     "trace",
     "trace/internal",
-    "trace/propagation"
+    "trace/propagation",
   ]
+  pruneopts = "UT"
   revision = "745e4f464ff2304a360c7c11459a93c264518df8"
 
 [[projects]]
   branch = "master"
+  digest = "1:3c4175c2711d67096567fc2d84a83464d6ff58119af3efc89983339d64144cb0"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -138,35 +161,43 @@
     "http2/hpack",
     "idna",
     "internal/timeseries",
-    "trace"
+    "trace",
   ]
+  pruneopts = "UT"
   revision = "f4c29de78a2a91c00474a2e689954305c350adf9"
 
 [[projects]]
   branch = "master"
+  digest = "1:bea0314c10bd362ab623af4880d853b5bad3b63d0ab9945c47e461b8d04203ed"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
     "google",
     "internal",
     "jws",
-    "jwt"
+    "jwt",
   ]
+  pruneopts = "UT"
   revision = "3d292e4d0cdc3a0113e6d207bb137145ef1de42f"
 
 [[projects]]
   branch = "master"
+  digest = "1:e0140c0c868c6e0f01c0380865194592c011fe521d6e12d78bfd33e756fe018a"
   name = "golang.org/x/sync"
   packages = ["semaphore"]
+  pruneopts = "UT"
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
 [[projects]]
   branch = "master"
+  digest = "1:9ec6ad2659635ba0974dd7e55bf84233523eb4e7535c9a2fddaefc4cc62a3eac"
   name = "golang.org/x/sys"
   packages = ["unix"]
+  pruneopts = "UT"
   revision = "0ffbfd41fbef8ffcf9b62b0b0aa3a5873ed7a4fe"
 
 [[projects]]
+  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -182,13 +213,15 @@
     "unicode/bidi",
     "unicode/cldr",
     "unicode/norm",
-    "unicode/rangetable"
+    "unicode/rangetable",
   ]
+  pruneopts = "UT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:e9e388241f9f0f02000dddaeeb91153d53f0cd09dcec33879cc7e043a2e65d75"
   name = "google.golang.org/api"
   packages = [
     "googleapi/transport",
@@ -198,11 +231,13 @@
     "support/bundler",
     "transport",
     "transport/grpc",
-    "transport/http"
+    "transport/http",
   ]
+  pruneopts = "UT"
   revision = "6c5c3d4ff96110173c63a6ffea8f2ffc8bb541b4"
 
 [[projects]]
+  digest = "1:1bd78b620cae476a55b10617b5ce2d089d13d62e10f7eeb84d15d310b04e04de"
   name = "google.golang.org/appengine"
   packages = [
     ".",
@@ -221,13 +256,15 @@
     "log",
     "socket",
     "urlfetch",
-    "user"
+    "user",
   ]
+  pruneopts = "UT"
   revision = "b1f26356af11148e710935ed1ac8a7f5702c7612"
   version = "v1.1.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:7457f165c888092e48fc09421d7e5d5dfe8643c03422acd26e440566032097e7"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
@@ -238,11 +275,13 @@
     "googleapis/devtools/cloudtrace/v2",
     "googleapis/monitoring/v3",
     "googleapis/rpc/status",
-    "protobuf/field_mask"
+    "protobuf/field_mask",
   ]
+  pruneopts = "UT"
   revision = "daca94659cb50e9f37c1b834680f2e46358f10b0"
 
 [[projects]]
+  digest = "1:f4fdb603068ae856b9eb05772787bf4966b1fabd3b074e3f840aab417bd992c3"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -271,26 +310,55 @@
     "resolver/passthrough",
     "stats",
     "status",
-    "tap"
+    "tap",
   ]
+  pruneopts = "UT"
   revision = "32fb0ac620c32ba40a4626ddf94d90d12cce3455"
   version = "v1.14.0"
 
 [[projects]]
   branch = "v2"
+  digest = "1:b6539350da50de0d3c9b83ae587c06b89be9cb5750443bdd887f1c4077f57776"
   name = "gopkg.in/validator.v2"
   packages = ["."]
+  pruneopts = "UT"
   revision = "135c24b11c19e52befcae2ec3fca5d9b78c4e98e"
 
 [[projects]]
+  digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
+  pruneopts = "UT"
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4e701d6c97fe7b4c02c53e098517dec36255793b5b1aadf861393194ea0fccc6"
+  input-imports = [
+    "cloud.google.com/go/monitoring/apiv3",
+    "contrib.go.opencensus.io/exporter/stackdriver",
+    "github.com/golang/mock/gomock",
+    "github.com/golang/protobuf/proto",
+    "github.com/golang/protobuf/ptypes",
+    "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/zorkian/go-datadog-api",
+    "go.opencensus.io/stats",
+    "go.opencensus.io/stats/view",
+    "go.opencensus.io/tag",
+    "google.golang.org/api/iterator",
+    "google.golang.org/appengine",
+    "google.golang.org/appengine/aetest",
+    "google.golang.org/appengine/datastore",
+    "google.golang.org/appengine/log",
+    "google.golang.org/appengine/urlfetch",
+    "google.golang.org/genproto/googleapis/api/metric",
+    "google.golang.org/genproto/googleapis/api/monitoredres",
+    "google.golang.org/genproto/googleapis/monitoring/v3",
+    "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/status",
+    "gopkg.in/validator.v2",
+    "gopkg.in/yaml.v2",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
