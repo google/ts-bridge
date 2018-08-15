@@ -104,3 +104,39 @@ func TestMetricRecords(t *testing.T) {
 		})
 	}
 }
+
+func TestCleanupMetricRecords(t *testing.T) {
+	for _, name := range []string{"metric1", "metric2"} {
+		r := MetricRecord{
+			Name:        name,
+			Query:       "query",
+			LastStatus:  "OK: all good",
+			LastAttempt: time.Now().Add(-time.Hour),
+			LastUpdate:  time.Now().Add(-time.Hour),
+		}
+		if err := r.write(testCtx); err != nil {
+			t.Fatalf("error while initializing MetricRecord: %v", err)
+		}
+	}
+
+	valid := []*Metric{
+		&Metric{Name: "metric1"},
+		&Metric{Name: "metric3"},
+	}
+
+	if err := CleanupRecords(testCtx, valid); err != nil {
+		t.Errorf("unexpected error from CleanupRecords: %v", err)
+	}
+
+	q := datastore.NewQuery(kindName)
+	var records []*MetricRecord
+	if _, err := q.GetAll(testCtx, &records); err != nil {
+		t.Fatalf("error while reading metric records: %v", err)
+	}
+	if len(records) != 1 {
+		t.Errorf("expected 1 record, got %v", len(records))
+	}
+	if records[0].Name != "metric1" {
+		t.Errorf("expected metric record for metric1; got %v", records[0])
+	}
+}

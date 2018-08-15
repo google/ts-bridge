@@ -16,9 +16,11 @@ env_variables:
   SD_PROJECT_FOR_INTERNAL_METRICS: ""
   # Number of metrics to update in parallel. Must be between 1 and 100 (chosen arbitrarily).
   UPDATE_PARALLELISM: 1
+  # Uncomment to enable the status web page.
+  #ENABLE_STATUS_PAGE: "yes"
 
 handlers:
 - url: /
   script: _go_app
-- url: /sync
+- url: /(sync|cleanup)
   script: _go_app

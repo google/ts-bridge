@@ -19,6 +19,7 @@ import (
 	"os"
 	"testing"
 
+	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 )
 
@@ -27,14 +28,18 @@ import (
 var testCtx context.Context
 
 func TestMain(m *testing.M) {
-	var done func()
-	var err error
-	testCtx, done, err = aetest.NewContext()
+	// Use strongly consistent datastore in tests to verify metric record cleanup.
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
 		panic(err)
 	}
+	req, err := inst.NewRequest("GET", "/", nil)
+	if err != nil {
+		panic(err)
+	}
+	testCtx = appengine.NewContext(req)
 
 	code := m.Run()
-	done()
+	inst.Close()
 	os.Exit(code)
 }
