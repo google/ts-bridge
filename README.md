@@ -129,9 +129,25 @@ the `env_variables` section of `app/app.yaml`.
   Parallel updates are scheduled using goroutines and still happen in the
   context of a single incoming HTTP request, and setting this value too high
   might result in the App Engine instance running out of RAM.
+* `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
+  (disabled by default).
 
 You can use `--env_var` flag to override these environment variables while
 running the app via `dev_appserver.py`.
+
+## Status Web Page
+
+If `ENABLE_STATUS_PAGE` environment variable is set to 'yes', the index page of
+the App Engine app shows a list of configured metrics along with import status
+for each metric. This might be useful for debugging, however is disabled by
+default to avoid publicly exposing a list of configured metrics (App Engine HTTP
+endpoints are publicly available by default).
+
+If you choose to leave the status page enabled, we recommend configuring
+[Identity-Aware Proxy](https://pantheon.corp.google.com/security/iap/project)
+(IAP) for the Cloud project where ts-bridge is running. You can use IAP to
+restrict access to ts-bridge by a specific Google group or a list of
+Google accounts.
 
 ## Monitoring
 

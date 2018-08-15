@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"strconv"
@@ -27,6 +28,7 @@ import (
 	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/tsbridge"
 
+	"github.com/dustin/go-humanize"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 )
@@ -34,10 +36,11 @@ import (
 func main() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/sync", sync)
+	http.HandleFunc("/cleanup", cleanup)
 	appengine.Main()
 }
 
-// sync updates all configured metrics. It's triggered by App Engine Task Queues.
+// sync updates all configured metrics. It's triggered by App Engine Cron.
 func sync(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 
@@ -91,23 +94,54 @@ func sync(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Since /sync is usually triggered by App Engine cron, error messages returned in HTTP response
-// will not be visible to humans. We need to log them as well, and this helper function does that.
+// cleanup removes obsolete metric records. It is triggered by App Engine Cron.
+func cleanup(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
+	if !appengine.IsDevAppServer() && r.Header.Get("X-Appengine-Cron") != "true" {
+		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
+		return
+	}
+
+	config, err := tsbridge.NewConfig(ctx, os.Getenv("CONFIG_FILE"))
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+
+	if err := tsbridge.CleanupRecords(ctx, config.Metrics()); err != nil {
+		logAndReturnError(ctx, w, err)
+	}
+}
+
+// index shows a web page with metric import status.
+func index(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("ENABLE_STATUS_PAGE") != "yes" {
+		http.Error(w, "Status page is disabled. Please set ENABLE_STATUS_PAGE to 'yes' to enable it.", http.StatusNotFound)
+		return
+	}
+
+	ctx := appengine.NewContext(r)
+	config, err := tsbridge.NewConfig(ctx, os.Getenv("CONFIG_FILE"))
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+
+	funcMap := template.FuncMap{"humantime": humanize.Time}
+	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("index.html")
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+	if err := t.Execute(w, config.Metrics()); err != nil {
+		logAndReturnError(ctx, w, err)
+	}
+}
+
+// Since some URLs are triggered by App Engine cron, error messages returned in HTTP response
+// might not be visible to humans. We need to log them as well, and this helper function does that.
 func logAndReturnError(ctx context.Context, w http.ResponseWriter, err error) {
 	log.Errorf(ctx, err.Error())
 	http.Error(w, err.Error(), http.StatusInternalServerError)
-}
-
-// index shows a very simple status UI. TODO(b/111250495): implement better UI.
-func index(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	metrics, err := tsbridge.ListRecords(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	for _, m := range metrics {
-		w.Write([]byte(fmt.Sprintf("%s\n[%s] %s\n\n", m.Name, m.LastAttempt, m.LastStatus)))
-	}
 }

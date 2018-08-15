@@ -25,9 +25,12 @@
 #   unused-packages = true
 
 
-[[constraint]]
+# Temporarily use `master` to get this fix: https://github.com/golang/protobuf/pull/628
+# TODO: switch this back to a tag after a new release is created
+# (https://github.com/golang/protobuf/issues/659).
+[[override]]
   name = "github.com/golang/protobuf"
-  version = "1.1.0"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/zorkian/go-datadog-api"

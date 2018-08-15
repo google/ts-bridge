@@ -19,6 +19,7 @@ package tsbridge
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -165,4 +166,19 @@ func (m *Metric) RecordSuccess(ctx context.Context, points int, msg string) erro
 		m.Record.LastUpdate = time.Now()
 	}
 	return m.Record.write(ctx)
+}
+
+// StackdriverURL returns a Metric Explorer URL for a given metric.
+func (m *Metric) StackdriverURL() string {
+	const xyChartTpl = `{"dataSets":[{"timeSeriesFilter":{"filter":"metric.type=\"%s\" resource.type=\"global\""}}]}`
+	u := url.URL{
+		Scheme: "https",
+		Host:   "app.google.stackdriver.com",
+		Path:   "/metrics-explorer",
+	}
+	q := u.Query()
+	q.Set("project", m.SDProject)
+	q.Set("xyChart", fmt.Sprintf(xyChartTpl, m.Source.StackdriverName()))
+	u.RawQuery = q.Encode()
+	return u.String()
 }

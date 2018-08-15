@@ -2,3 +2,6 @@ cron:
 - description: "sync metrics"
   url: /sync
   schedule: every 1 mins
+- description: "remove obsolete metric records"
+  url: /cleanup
+  schedule: every 12 hours

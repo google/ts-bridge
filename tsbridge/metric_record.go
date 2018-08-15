@@ -18,9 +18,11 @@ package tsbridge
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 )
 
 // Name of the Datastore kind where metric records are stored.
@@ -36,7 +38,6 @@ type MetricRecord struct {
 }
 
 // Write metric data back to Datastore.
-// TODO(knyar): add a way to clean up unused records.
 func (m *MetricRecord) write(ctx context.Context) error {
 	_, err := datastore.Put(ctx, m.key(ctx), m)
 	return err
@@ -56,10 +57,26 @@ func (m *MetricRecord) key(ctx context.Context) *datastore.Key {
 	return datastore.NewKey(ctx, kindName, m.Name, 0, nil)
 }
 
-// ListRecords returns a list of metric records from Datastore.
-func ListRecords(ctx context.Context) ([]*MetricRecord, error) {
+// CleanupRecords removes obsolete metric records from Datastore.
+func CleanupRecords(ctx context.Context, valid []*Metric) error {
+	existing := make(map[string]bool)
+	for _, m := range valid {
+		existing[m.Name] = true
+	}
 	q := datastore.NewQuery(kindName)
-	var r []*MetricRecord
-	_, err := q.GetAll(ctx, &r)
-	return r, err
+	var records []*MetricRecord
+	if _, err := q.GetAll(ctx, &records); err != nil {
+		return fmt.Errorf("could not list metric records: %v", err)
+	}
+	log.Infof(ctx, "%d metrics configured, %d metric records found in Datastore", len(valid), len(records))
+	for _, r := range records {
+		if !existing[r.Name] {
+			log.Infof(ctx, "deleting obsolete metric record for %s", r.Name)
+			err := datastore.Delete(ctx, r.key(ctx))
+			if err != nil {
+				return fmt.Errorf("could not delete metric record %v: %v", r.Name, err)
+			}
+		}
+	}
+	return nil
 }
