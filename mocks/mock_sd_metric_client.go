@@ -72,6 +72,18 @@ func (mr *MockMetricClientMockRecorder) CreateTimeSeries(arg0, arg1 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTimeSeries", reflect.TypeOf((*MockMetricClient)(nil).CreateTimeSeries), arg0, arg1)
 }
 
+// DeleteMetricDescriptor mocks base method
+func (m *MockMetricClient) DeleteMetricDescriptor(arg0 context.Context, arg1 *v3.DeleteMetricDescriptorRequest) error {
+	ret := m.ctrl.Call(m, "DeleteMetricDescriptor", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMetricDescriptor indicates an expected call of DeleteMetricDescriptor
+func (mr *MockMetricClientMockRecorder) DeleteMetricDescriptor(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMetricDescriptor", reflect.TypeOf((*MockMetricClient)(nil).DeleteMetricDescriptor), arg0, arg1)
+}
+
 // GetMetricDescriptor mocks base method
 func (m *MockMetricClient) GetMetricDescriptor(arg0 context.Context, arg1 *v3.GetMetricDescriptorRequest) (*metric.MetricDescriptor, error) {
 	ret := m.ctrl.Call(m, "GetMetricDescriptor", arg0, arg1)

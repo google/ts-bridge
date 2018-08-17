@@ -84,6 +84,8 @@ func (m *Metric) StackdriverData(ctx context.Context, since time.Time) (*metricp
 // metricDescriptor creates a Stackdriver MetricDescriptor based on a Datadog series.
 func (m *Metric) metricDescriptor(series ddapi.Series) *metricpb.MetricDescriptor {
 	d := &metricpb.MetricDescriptor{
+		// Name does not need to be set here; it will be set by Stackdriver Adapter based on the Stackdriver
+		// project that this metric is written to.
 		Type: m.StackdriverName(),
 		// Query results are gauges; there does not seem to be a way to get cumulative metrics from Datadog.
 		MetricKind: metricpb.MetricDescriptor_GAUGE,

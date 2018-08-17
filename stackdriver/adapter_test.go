@@ -64,18 +64,16 @@ func unmarshalTimeSeries(textprotos []string) []*monitoringpb.TimeSeries {
 	return ts
 }
 
-func TestMetricExists(t *testing.T) {
+func TestGetDescriptor(t *testing.T) {
 	for _, tt := range []struct {
-		name    string
-		desc    *metricpb.MetricDescriptor
-		err     error
-		want    bool
-		wantErr error
+		name string
+		desc *metricpb.MetricDescriptor
+		err  error
+		want *metricpb.MetricDescriptor
 	}{
-		{"metric found", &metricpb.MetricDescriptor{Name: "projects/foo/metricDescriptors/bar"}, nil, true, nil},
-		{"empty response", nil, nil, false, nil},
-		{"different descriptor", &metricpb.MetricDescriptor{Name: "projects/foo/metricDescriptors/anothermetric"}, nil, false, nil},
-		{"gprc not found code", nil, status.Error(codes.NotFound, "Not found"), false, nil},
+		{"metric found", &metricpb.MetricDescriptor{Name: "projects/foo/metricDescriptors/bar"}, nil, &metricpb.MetricDescriptor{Name: "projects/foo/metricDescriptors/bar"}},
+		{"empty response", nil, nil, nil},
+		{"gprc not found code", nil, status.Error(codes.NotFound, "Not found"), nil},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
@@ -84,12 +82,56 @@ func TestMetricExists(t *testing.T) {
 			mock.EXPECT().GetMetricDescriptor(gomock.Any(), gomock.Any()).Return(tt.desc, tt.err)
 			a := &Adapter{mock, time.Hour}
 
-			got, err := a.metricExists(testCtx, "foo", "bar")
-			if got != tt.want {
-				t.Errorf("metricExists() = %v, want %v", got, tt.want)
+			got, err := a.getDescriptor(testCtx, "foo", "bar")
+			if !proto.Equal(got, tt.want) {
+				t.Errorf("getDescriptor() = %v, want %v", got, tt.want)
 			}
-			if err != tt.wantErr {
-				t.Errorf("metricExists() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil {
+				t.Errorf("getDescriptor() unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestSetDescriptor(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		desc        *metricpb.MetricDescriptor
+		descErr     error
+		deleteCalls int
+		deleteError error
+		createCalls int
+		createError error
+		wantError   string
+	}{
+		{"no descriptor exist", nil, nil, 0, nil, 1, nil, ""},
+		{"different descriptor exists",
+			&metricpb.MetricDescriptor{Type: "bar", Name: "projects/foo/metricDescriptors/bar", Description: "another metric"},
+			nil, 1, nil, 1, nil, ""},
+		{"same descriptor exists",
+			&metricpb.MetricDescriptor{Type: "bar", Name: "projects/foo/metricDescriptors/bar", Description: "my metric"},
+			nil, 0, nil, 0, nil, ""},
+		{"error getting descriptor",
+			&metricpb.MetricDescriptor{}, fmt.Errorf("error1"), 0, nil, 0, nil, "error1"},
+		{"error deleting descriptor", &metricpb.MetricDescriptor{}, nil, 1, fmt.Errorf("error2"), 0, nil, "error2"},
+		{"error creating descriptor", &metricpb.MetricDescriptor{}, nil, 1, nil, 1, fmt.Errorf("error3"), "error3"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			mock := mocks.NewMockMetricClient(mockCtrl)
+			mock.EXPECT().GetMetricDescriptor(gomock.Any(), gomock.Any()).Return(tt.desc, tt.descErr)
+			mock.EXPECT().DeleteMetricDescriptor(gomock.Any(), gomock.Any()).Times(tt.deleteCalls).Return(tt.deleteError)
+			mock.EXPECT().CreateMetricDescriptor(gomock.Any(), gomock.Any()).Times(tt.createCalls).Return(&metricpb.MetricDescriptor{}, tt.createError)
+			a := &Adapter{mock, time.Hour}
+
+			err := a.setDescriptor(testCtx, "foo", "bar", &metricpb.MetricDescriptor{Type: "bar", Description: "my metric"})
+			if tt.wantError == "" && err != nil {
+				t.Errorf("setDescriptor() unexpected error: %v", err)
+			}
+			if tt.wantError != "" && (err == nil || !strings.Contains(err.Error(), tt.wantError)) {
+				t.Errorf("expected error from setDescriptor() to contain %v; got %v", tt.wantError, err)
 			}
 		})
 	}
