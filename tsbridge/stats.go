@@ -61,7 +61,7 @@ func NewCollector(ctx context.Context) (*StatsCollector, error) {
 
 	project := os.Getenv("SD_PROJECT_FOR_INTERNAL_METRICS")
 	if project == "" {
-		project = appIDFunc(ctx)
+		project = projectID(ctx)
 	}
 	if project == "" {
 		return nil, fmt.Errorf("Please define SD_PROJECT_FOR_INTERNAL_METRICS if not running on App Engine")
