@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/appengine/log"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
@@ -35,6 +36,7 @@ import (
 type MetricClient interface {
 	CreateMetricDescriptor(context.Context, *monitoringpb.CreateMetricDescriptorRequest) (*metricpb.MetricDescriptor, error)
 	GetMetricDescriptor(context.Context, *monitoringpb.GetMetricDescriptorRequest) (*metricpb.MetricDescriptor, error)
+	DeleteMetricDescriptor(ctx context.Context, req *monitoringpb.DeleteMetricDescriptorRequest) error
 	CreateTimeSeries(context.Context, *monitoringpb.CreateTimeSeriesRequest) error
 	ListTimeSeries(context.Context, *monitoringpb.ListTimeSeriesRequest) ([]*monitoringpb.TimeSeries, error)
 	Close() error
@@ -86,18 +88,49 @@ func (a *Adapter) listTimeSeries(ctx context.Context, project, name string) ([]*
 	})
 }
 
-// metricExists checks whether a metric with a given name exists in SD.
-func (a *Adapter) metricExists(ctx context.Context, project, name string) (bool, error) {
+// getDescriptor returns a metric descriptor for a given metric.
+func (a *Adapter) getDescriptor(ctx context.Context, project, name string) (*metricpb.MetricDescriptor, error) {
 	metric := fmt.Sprintf("projects/%s/metricDescriptors/%s", project, name)
 	desc, err := a.c.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{Name: metric})
 	if err != nil {
 		st, ok := status.FromError(err)
 		if ok && st.Code() == codes.NotFound {
-			return false, nil
+			return nil, nil
 		}
-		return false, fmt.Errorf("GetMetricDescriptor error: %s, name: %v", err, name)
+		return nil, fmt.Errorf("GetMetricDescriptor error: %s, name: %v", err, name)
 	}
-	return desc != nil && desc.GetName() == metric, nil
+	return desc, nil
+}
+
+// setDescriptor installs a metric descriptor for a given metric. If there is an existing metric descriptor
+// that is different, it will be deleted first.
+func (a *Adapter) setDescriptor(ctx context.Context, project, name string, desc *metricpb.MetricDescriptor) error {
+	desc.Name = fmt.Sprintf("projects/%s/metricDescriptors/%s", project, desc.Type)
+
+	current, err := a.getDescriptor(ctx, project, name)
+	if err != nil {
+		return fmt.Errorf("Error while getting descriptor for %s: %s", name, err)
+	}
+	if proto.Equal(current, desc) {
+		return nil
+	}
+	if current != nil {
+		// There's no way to update an existing metric descriptor, so we need to delete and then create a new one.
+		log.Infof(ctx, "Deleting existing metric descriptor: %v", current.Name)
+		err = a.c.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{Name: current.Name})
+		if err != nil {
+			return fmt.Errorf("DeleteMetricDescriptor error: %s", err)
+		}
+	}
+	log.Infof(ctx, "Creating a new metric descriptor: %v", desc.Name)
+	_, err = a.c.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
+		Name:             fmt.Sprintf("projects/%s", project),
+		MetricDescriptor: desc,
+	})
+	if err != nil {
+		return fmt.Errorf("CreateMetricDescriptor error: %s, descriptor: %v", err, desc)
+	}
+	return nil
 }
 
 // LatestTimestamp determines the timestamp of a latest point for a given metric in SD.
@@ -105,11 +138,11 @@ func (a *Adapter) metricExists(ctx context.Context, project, name string) (bool,
 func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (time.Time, error) {
 	latest := time.Now().Add(-a.lookBackInterval)
 
-	exists, err := a.metricExists(ctx, project, name)
+	desc, err := a.getDescriptor(ctx, project, name)
 	if err != nil {
 		return latest, err
 	}
-	if !exists {
+	if desc == nil {
 		log.Debugf(ctx, "No metric descriptor found for %s", name)
 		return latest, nil
 	}
@@ -145,20 +178,8 @@ func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (ti
 // CreateTimeseries writes time series data (new data points) for a given metric into Stackdriver.
 // It also creates a metric descriptor if it does not exist.
 func (a *Adapter) CreateTimeseries(ctx context.Context, project, name string, desc *metricpb.MetricDescriptor, series []*monitoringpb.TimeSeries) error {
-	exists, err := a.metricExists(ctx, project, name)
-	if err != nil {
-		return fmt.Errorf("Error while checking descriptor for %s: %s", name, err)
-	}
-
-	if !exists {
-		desc.Name = fmt.Sprintf("projects/%s/metricDescriptors/%s", project, desc.Type)
-		_, err := a.c.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
-			Name:             fmt.Sprintf("projects/%s", project),
-			MetricDescriptor: desc,
-		})
-		if err != nil {
-			return fmt.Errorf("CreateMetricDescriptor error: %s, descriptor: %v", err, desc)
-		}
+	if err := a.setDescriptor(ctx, project, name, desc); err != nil {
+		return err
 	}
 
 	for _, ts := range series {

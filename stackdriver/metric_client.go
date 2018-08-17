@@ -50,6 +50,10 @@ func (c *client) GetMetricDescriptor(ctx context.Context, req *monitoringpb.GetM
 	return c.sd.GetMetricDescriptor(ctx, req)
 }
 
+func (c *client) DeleteMetricDescriptor(ctx context.Context, req *monitoringpb.DeleteMetricDescriptorRequest) error {
+	return c.sd.DeleteMetricDescriptor(ctx, req)
+}
+
 func (c *client) CreateTimeSeries(ctx context.Context, req *monitoringpb.CreateTimeSeriesRequest) error {
 	return c.sd.CreateTimeSeries(ctx, req)
 }
