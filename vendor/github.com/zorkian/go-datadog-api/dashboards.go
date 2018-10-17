@@ -52,14 +52,63 @@ type GraphEvent struct {
 }
 
 type Yaxis struct {
-	Min   *float64 `json:"min,omitempty"`
-	Max   *float64 `json:"max,omitempty"`
-	Scale *string  `json:"scale,omitempty"`
+	Min     *float64 `json:"min,omitempty"`
+	AutoMin bool     `json:"-"`
+	Max     *float64 `json:"max,omitempty"`
+	AutoMax bool     `json:"-"`
+	Scale   *string  `json:"scale,omitempty"`
+}
+
+// UnmarshalJSON is a Custom Unmarshal for Yaxis.Min/Yaxis.Max. If the datadog API
+// returns "auto" for min or max, then we should set Yaxis.min or Yaxis.max to nil,
+// respectively.
+func (y *Yaxis) UnmarshalJSON(data []byte) error {
+	type Alias Yaxis
+	wrapper := &struct {
+		Min *json.Number `json:"min,omitempty"`
+		Max *json.Number `json:"max,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(y),
+	}
+
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return err
+	}
+
+	if wrapper.Min != nil {
+		if *wrapper.Min == "auto" {
+			y.AutoMin = true
+			y.Min = nil
+		} else {
+			f, err := wrapper.Min.Float64()
+			if err != nil {
+				return err
+			}
+			y.Min = &f
+		}
+	}
+
+	if wrapper.Max != nil {
+		if *wrapper.Max == "auto" {
+			y.AutoMax = true
+			y.Max = nil
+		} else {
+			f, err := wrapper.Max.Float64()
+			if err != nil {
+				return err
+			}
+			y.Max = &f
+		}
+	}
+	return nil
 }
 
 type Style struct {
-	Palette     *string `json:"palette,omitempty"`
-	PaletteFlip *bool   `json:"paletteFlip,omitempty"`
+	Palette     *string      `json:"palette,omitempty"`
+	PaletteFlip *bool        `json:"paletteFlip,omitempty"`
+	FillMin     *json.Number `json:"fillMin,omitempty"`
+	FillMax     *json.Number `json:"fillMax,omitempty"`
 }
 
 type GraphDefinition struct {
@@ -72,18 +121,18 @@ type GraphDefinition struct {
 	Yaxis Yaxis `json:"yaxis,omitempty"`
 
 	// For query value type graphs
-	Autoscale  *bool   `json:"autoscale,omitempty"`
-	TextAlign  *string `json:"text_align,omitempty"`
-	Precision  *string `json:"precision,omitempty"`
-	CustomUnit *string `json:"custom_unit,omitempty"`
+	Autoscale  *bool        `json:"autoscale,omitempty"`
+	TextAlign  *string      `json:"text_align,omitempty"`
+	Precision  *json.Number `json:"precision,omitempty"`
+	CustomUnit *string      `json:"custom_unit,omitempty"`
 
-	// For hostname type graphs
-	Style *Style `json:"Style,omitempty"`
-
+	// For hostmaps
+	Style                 *Style   `json:"style,omitempty"`
 	Groups                []string `json:"group,omitempty"`
 	IncludeNoMetricHosts  *bool    `json:"noMetricHosts,omitempty"`
 	Scopes                []string `json:"scope,omitempty"`
 	IncludeUngroupedHosts *bool    `json:"noGroupHosts,omitempty"`
+	NodeType              *string  `json:"nodeType,omitempty"`
 }
 
 // Graph represents a graph that might exist on a dashboard.
