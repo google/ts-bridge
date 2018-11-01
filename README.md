@@ -12,6 +12,7 @@ ts-bridge is an App Engine Standard app written in Go.
 1.  [App Configuration](#app-configuration)
 1.  [Status Page](#status-page)
 1.  [Internal Monitoring](#internal-monitoring)
+1.  [Troubleshooting](#troubleshooting)
 1.  [Development](#development)
 1.  [Support](#support)
 
@@ -296,6 +297,34 @@ metrics to Stackdriver:
 
 All metrics are reported as Stackdriver custom metrics and have names prefixed
 by `custom.googleapis.com/opencensus/ts_bridge/`
+
+# Troubleshooting
+
+This section describes common issues you might experience with ts-bridge.
+
+## Writing points to Stackdriver too frequently
+
+If your query returns more than 1 point per minute, you might be seeing the
+following error from Stackdriver:
+
+> One or more TimeSeries could not be written: One or more points were written more frequently than the maximum sampling period configured for the metric.
+
+Stackdriver documentation
+[recommends](https://cloud.google.com/monitoring/custom-metrics/creating-metrics#writing-ts)
+to not add points to the same time series faster than once per minute. If your
+Datadog query returns multiple points per minute, you can use the
+[rollup](https://docs.datadoghq.com/graphing/functions/rollup/) function in
+your query to aggregate multiple points. For example, instead of a query like
+this:
+
+    sum:http_request_count{environment:prod}
+
+You can use a query like this:
+
+    sum:http_request_count{environment:prod}.rollup(sum, 60)
+
+In this example, `rollup()` will make sure the query returns a single point
+per minute, which will be a sum of all points within that minute.
 
 # Development
 
