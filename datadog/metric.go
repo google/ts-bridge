@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	ddapi "github.com/zorkian/go-datadog-api"
 	"google.golang.org/appengine/log"
@@ -30,9 +31,10 @@ import (
 
 // Metric defines a Datadog-based metric. It implements the SourceMetric interface.
 type Metric struct {
-	Name   string
-	config *MetricConfig
-	client *ddapi.Client
+	Name        string
+	config      *MetricConfig
+	client      *ddapi.Client
+	minPointAge time.Duration
 }
 
 // MetricConfig defines configuration file parameters for a specific metric imported from Datadog.
@@ -43,12 +45,13 @@ type MetricConfig struct {
 }
 
 // NewSourceMetric creates a new SourceMetric from a metric name and configuration parameters.
-func NewSourceMetric(name string, config *MetricConfig) *Metric {
+func NewSourceMetric(name string, config *MetricConfig, minPointAge time.Duration) *Metric {
 	client := ddapi.NewClient(config.APIKey, config.ApplicationKey)
 	return &Metric{
-		Name:   name,
-		config: config,
-		client: client,
+		Name:        name,
+		config:      config,
+		client:      client,
+		minPointAge: minPointAge,
 	}
 }
 
@@ -77,8 +80,24 @@ func (m *Metric) StackdriverData(ctx context.Context, since time.Time) (*metricp
 	} else if len(series) > 1 {
 		return nil, nil, fmt.Errorf("Query '%s' returned %d time series", m.config.Query, len(series))
 	}
-	log.Debugf(ctx, "Got %d points in response to the Datadog query '%s'", len(series[0].Points), m.config.Query)
-	return m.metricDescriptor(series[0]), m.convertTimeSeries(series[0]), nil
+	points, err := m.filterPoints(series[0].Points)
+	log.Debugf(ctx, "Got %d points (%d after filtering) in response to the Datadog query '%s'", len(series[0].Points), len(points), m.config.Query)
+	return m.metricDescriptor(series[0]), m.convertTimeSeries(points), nil
+}
+
+// filterPoints gets a slice of Datadog points, and returns a similar slice, but without points that are too fresh.
+func (m *Metric) filterPoints(points []ddapi.DataPoint) ([]ddapi.DataPoint, error) {
+	var output []ddapi.DataPoint
+	for _, p := range points {
+		ts, err := ptypes.Timestamp(pointTimestamp(p))
+		if err != nil {
+			return nil, fmt.Errorf("Could not parse point timestamp for %v: %v", p, err)
+		}
+		if time.Now().Sub(ts) >= m.minPointAge {
+			output = append(output, p)
+		}
+	}
+	return output, nil
 }
 
 // metricDescriptor creates a Stackdriver MetricDescriptor based on a Datadog series.
@@ -89,7 +108,7 @@ func (m *Metric) metricDescriptor(series ddapi.Series) *metricpb.MetricDescripto
 		Type: m.StackdriverName(),
 		// Query results are gauges; there does not seem to be a way to get cumulative metrics from Datadog.
 		MetricKind: metricpb.MetricDescriptor_GAUGE,
-		// Datadog API does not declare value type, and the clinet library exposes all points as float64.
+		// Datadog API does not declare value type, and the client library exposes all points as float64.
 		ValueType:   metricpb.MetricDescriptor_DOUBLE,
 		Description: fmt.Sprintf("Datadog query: %s", m.config.Query),
 		DisplayName: *series.DisplayName,
@@ -110,9 +129,9 @@ func (m *Metric) metricDescriptor(series ddapi.Series) *metricpb.MetricDescripto
 // A separate TimeSeries message is created for each point because Stackdriver only allows sending a single
 // point in a given request for each time series, so multiple points will need to be sent as separate requests.
 // See https://cloud.google.com/monitoring/custom-metrics/creating-metrics#writing-ts
-func (m *Metric) convertTimeSeries(series ddapi.Series) []*monitoringpb.TimeSeries {
-	ts := make([]*monitoringpb.TimeSeries, 0, len(series.Points))
-	for _, p := range series.Points {
+func (m *Metric) convertTimeSeries(points []ddapi.DataPoint) []*monitoringpb.TimeSeries {
+	ts := make([]*monitoringpb.TimeSeries, 0, len(points))
+	for _, p := range points {
 		ts = append(ts, &monitoringpb.TimeSeries{
 			Metric:     &metricpb.Metric{Type: m.StackdriverName()},
 			Resource:   &monitoredres.MonitoredResource{Type: "global"},
@@ -128,16 +147,20 @@ func (m *Metric) convertTimeSeries(series ddapi.Series) []*monitoringpb.TimeSeri
 func convertPoint(p ddapi.DataPoint) *monitoringpb.Point {
 	return &monitoringpb.Point{
 		Interval: &monitoringpb.TimeInterval{
-			EndTime: &timestamp.Timestamp{
-				// Datadog timestamps are in milliseconds.
-				Seconds: int64(*p[0] / 1e3),
-				Nanos:   int32(int64(*p[0]*1e6) % 1e9),
-			},
+			EndTime: pointTimestamp(p),
 		},
 		Value: &monitoringpb.TypedValue{
 			Value: &monitoringpb.TypedValue_DoubleValue{
 				DoubleValue: *p[1],
 			},
 		},
+	}
+}
+
+func pointTimestamp(p ddapi.DataPoint) *timestamp.Timestamp {
+	return &timestamp.Timestamp{
+		// Datadog timestamps are in milliseconds.
+		Seconds: int64(*p[0] / 1e3),
+		Nanos:   int32(int64(*p[0]*1e6) % 1e9),
 	}
 }

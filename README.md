@@ -260,6 +260,10 @@ the `env_variables` section of `app/app.yaml`.
     parallel. Parallel updates are scheduled using goroutines and still happen
     in the context of a single incoming HTTP request, and setting this value too
     high might result in the App Engine instance running out of RAM.
+*   `DATADOG_MIN_POINT_AGE`: minimum age of a data point returned by Datadog
+    that makes it eligible for being written. Points that are very fresh
+    (default is 1 minute) are ignored, since Datadog might return incomplete
+    data for them if some input data is delayed.
 *   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
     (disabled by default).
 

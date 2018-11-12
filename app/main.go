@@ -57,7 +57,7 @@ func sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := tsbridge.NewConfig(ctx, os.Getenv("CONFIG_FILE"))
+	config, err := newConfig(ctx)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -103,7 +103,7 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := tsbridge.NewConfig(ctx, os.Getenv("CONFIG_FILE"))
+	config, err := newConfig(ctx)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -122,7 +122,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := appengine.NewContext(r)
-	config, err := tsbridge.NewConfig(ctx, os.Getenv("CONFIG_FILE"))
+	config, err := newConfig(ctx)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -137,6 +137,16 @@ func index(w http.ResponseWriter, r *http.Request) {
 	if err := t.Execute(w, config.Metrics()); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
+}
+
+// newConfig initializes and returns tsbridge config.
+func newConfig(ctx context.Context) (*tsbridge.Config, error) {
+	ddMinPointAge, err := time.ParseDuration(os.Getenv("DATADOG_MIN_POINT_AGE"))
+	if err != nil {
+		return nil, fmt.Errorf("Could not parse DATADOG_MIN_POINT_AGE: %v", err)
+	}
+
+	return tsbridge.NewConfig(ctx, os.Getenv("CONFIG_FILE"), ddMinPointAge)
 }
 
 // Since some URLs are triggered by App Engine cron, error messages returned in HTTP response

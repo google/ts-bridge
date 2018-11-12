@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"github.com/google/ts-bridge/datadog"
 
@@ -67,7 +68,7 @@ func (c *Config) Metrics() []*Metric {
 }
 
 // NewConfig reads and validates a configuration file, returning the Config struct.
-func NewConfig(ctx context.Context, filename string) (*Config, error) {
+func NewConfig(ctx context.Context, filename string, ddMinPointAge time.Duration) (*Config, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -101,7 +102,7 @@ func NewConfig(ctx context.Context, filename string) (*Config, error) {
 		if !ok {
 			return nil, fmt.Errorf("destination '%s' not found", m.Destination)
 		}
-		source := datadog.NewSourceMetric(m.Name, &m.MetricConfig)
+		source := datadog.NewSourceMetric(m.Name, &m.MetricConfig, ddMinPointAge)
 		metric, err := NewMetric(ctx, m.Name, source, project)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create metric '%s': %v", m.Name, err)

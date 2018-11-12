@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	ddapi "github.com/zorkian/go-datadog-api"
 	"google.golang.org/appengine/aetest"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
@@ -82,7 +83,7 @@ func makeTestServer(filename string) (*fixtureHandler, *httptest.Server) {
 func TestStackdriverDataErrors(t *testing.T) {
 	handler, server := makeTestServer("")
 	defer server.Close()
-	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"})
+	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Second)
 	m.client.SetBaseUrl(server.URL)
 
 	// At this point HTTP server returns 404 to all requests, so we might as well test error handling.
@@ -112,7 +113,7 @@ func TestStackdriverDataErrors(t *testing.T) {
 func TestStackdriverDataResponses(t *testing.T) {
 	_, server := makeTestServer("good.json")
 	defer server.Close()
-	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"})
+	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Second)
 	m.client.SetBaseUrl(server.URL)
 
 	desc, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
@@ -151,10 +152,44 @@ func TestStackdriverDataResponses(t *testing.T) {
 	}
 }
 
+func TestNewPointsGetFilteredOut(t *testing.T) {
+	_, server := makeTestServer("good.json")
+	defer server.Close()
+	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Hour*24*365*100)
+	m.client.SetBaseUrl(server.URL)
+
+	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
+	if err != nil {
+		t.Errorf("expected no errors; got %v", err)
+	}
+	// All points in good.json are more fresh than 100 years ago, so we should get 0 points back.
+	if len(ts) != 0 {
+		t.Errorf("expected 0 time series objects; got %d", len(ts))
+	}
+}
+
+func TestFilterPoints(t *testing.T) {
+	m := NewSourceMetric("metricname", &MetricConfig{Query: "foo"}, time.Minute)
+	value := float64(0)
+	var points []ddapi.DataPoint
+	for _, secAgo := range []int{30, 90} {
+		// datadog timestamps are in milliseconds.
+		ts := float64(time.Now().Add(-time.Duration(secAgo)*time.Second).Unix() * 1000)
+		points = append(points, ddapi.DataPoint{&ts, &value})
+	}
+	got, err := m.filterPoints(points)
+	if err != nil {
+		t.Errorf("expected no errors; got %v", err)
+	}
+	if len(got) != 1 {
+		t.Errorf("expected 1 point; got %v", got)
+	}
+}
+
 func TestStackdriverDataUnits(t *testing.T) {
 	handler, server := makeTestServer("")
 	defer server.Close()
-	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"})
+	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Second)
 	m.client.SetBaseUrl(server.URL)
 
 	for _, tt := range []struct {
@@ -178,11 +213,10 @@ func TestStackdriverDataUnits(t *testing.T) {
 
 func TestMetricConfig(t *testing.T) {
 	c := &MetricConfig{Query: "foo"}
-	m := NewSourceMetric("metricname", c)
+	m := NewSourceMetric("metricname", c, time.Second)
 
 	q := m.Query()
 	if q != "foo" {
 		t.Errorf("expected Query() to return the Datadog query; got %v", q)
 	}
-
 }
