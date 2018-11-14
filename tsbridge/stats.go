@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	sdexporter "contrib.go.opencensus.io/exporter/stackdriver"
 	"go.opencensus.io/stats"
@@ -102,6 +103,11 @@ func (c *StatsCollector) registerAndCreateMetrics() error {
 	statsMu.Lock()
 	var err error
 	view.RegisterExporter(c.Exporter)
+
+	// Reporting period is set very high here to effectively disable regular flushing of metrics by OpenCensus
+	// view worker. Since stats collector is relatively short-lived, we rely on metric flushing that happens when
+	// the Stackdriver exporter is closed by the Close function above (at the end of each sync operation).
+	view.SetReportingPeriod(time.Hour)
 
 	c.MetricKey, err = tag.NewKey("metric_name")
 	if err != nil {
