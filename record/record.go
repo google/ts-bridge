@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package tsbridge deals with Time Series Bridge configuration files and metric representations.
-// This file describes Metric Records that store some data about each imported metric in App Engine Datastore.
-package tsbridge
+// Package record describes Metric Records that store some data about each imported metric in App Engine Datastore.
+package record
 
 import (
 	"context"
@@ -38,13 +37,13 @@ type MetricRecord struct {
 }
 
 // Write metric data back to Datastore.
-func (m *MetricRecord) write(ctx context.Context) error {
+func (m *MetricRecord) Write(ctx context.Context) error {
 	_, err := datastore.Put(ctx, m.key(ctx), m)
 	return err
 }
 
 // Load metric record state from Datastore.
-func (m *MetricRecord) load(ctx context.Context) error {
+func (m *MetricRecord) Load(ctx context.Context) error {
 	err := datastore.Get(ctx, m.key(ctx), m)
 	if err != nil && err != datastore.ErrNoSuchEntity {
 		return err
@@ -57,11 +56,30 @@ func (m *MetricRecord) key(ctx context.Context) *datastore.Key {
 	return datastore.NewKey(ctx, kindName, m.Name, 0, nil)
 }
 
+// UpdateError updates metric status in Datastore with a given error message.
+func (m *MetricRecord) UpdateError(ctx context.Context, e error) error {
+	log.Errorf(ctx, "%s: %s", m.Name, e)
+	m.LastStatus = fmt.Sprintf("ERROR: %s", e)
+	m.LastAttempt = time.Now()
+	return m.Write(ctx)
+}
+
+// UpdateSuccess updates metric status in Datastore with a given message.
+func (m *MetricRecord) UpdateSuccess(ctx context.Context, points int, msg string) error {
+	log.Infof(ctx, "%s: %s", m.Name, msg)
+	m.LastStatus = fmt.Sprintf("OK: %s", msg)
+	m.LastAttempt = time.Now()
+	if points > 0 {
+		m.LastUpdate = time.Now()
+	}
+	return m.Write(ctx)
+}
+
 // CleanupRecords removes obsolete metric records from Datastore.
-func CleanupRecords(ctx context.Context, valid []*Metric) error {
+func CleanupRecords(ctx context.Context, valid []string) error {
 	existing := make(map[string]bool)
 	for _, m := range valid {
-		existing[m.Name] = true
+		existing[m] = true
 	}
 	q := datastore.NewQuery(kindName)
 	var records []*MetricRecord

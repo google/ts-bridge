@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/ts-bridge/record"
 	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/tsbridge"
 
@@ -109,7 +110,11 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tsbridge.CleanupRecords(ctx, config.Metrics()); err != nil {
+	var metricNames []string
+	for _, m := range config.Metrics() {
+		metricNames = append(metricNames, m.Name)
+	}
+	if err := record.CleanupRecords(ctx, metricNames); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
 }

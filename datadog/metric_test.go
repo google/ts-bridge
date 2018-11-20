@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/ts-bridge/record"
+
 	"github.com/golang/protobuf/proto"
 	ddapi "github.com/zorkian/go-datadog-api"
 	"google.golang.org/appengine/aetest"
@@ -87,21 +89,21 @@ func TestStackdriverDataErrors(t *testing.T) {
 	m.client.SetBaseUrl(server.URL)
 
 	// At this point HTTP server returns 404 to all requests, so we might as well test error handling.
-	_, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
+	_, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.MetricRecord{})
 	if err == nil {
 		t.Error("expected an error when server returns 404")
 	}
 
 	// A query needs to return a single time series.
 	handler.filename = "multiple_ts.json"
-	_, _, err = m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
+	_, _, err = m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.MetricRecord{})
 	if err == nil || !strings.Contains(err.Error(), "returned 2 time series") {
 		t.Errorf("expected StackdriverData error to say 'returned 2 time series'; got %v", err)
 	}
 
 	// No time series is not an error, however `ts` needs to be a 0-length slice.
 	handler.filename = "no_ts.json"
-	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
+	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.MetricRecord{})
 	if err != nil {
 		t.Errorf("expected no errors when query returns no timeseries'; got %v", err)
 	}
@@ -116,7 +118,7 @@ func TestStackdriverDataResponses(t *testing.T) {
 	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Second)
 	m.client.SetBaseUrl(server.URL)
 
-	desc, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
+	desc, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.MetricRecord{})
 	if err != nil {
 		t.Errorf("expected no errors'; got %v", err)
 	}
@@ -158,7 +160,7 @@ func TestNewPointsGetFilteredOut(t *testing.T) {
 	m := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Hour*24*365*100)
 	m.client.SetBaseUrl(server.URL)
 
-	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
+	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.MetricRecord{})
 	if err != nil {
 		t.Errorf("expected no errors; got %v", err)
 	}
@@ -201,7 +203,7 @@ func TestStackdriverDataUnits(t *testing.T) {
 		{"no_unit.json", ""},
 	} {
 		handler.filename = tt.filename
-		desc, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute))
+		desc, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.MetricRecord{})
 		if err != nil {
 			t.Errorf("%s: expected no errors; got %v", tt.filename, err)
 		}
