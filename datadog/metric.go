@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/ts-bridge/record"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	ddapi "github.com/zorkian/go-datadog-api"
@@ -67,7 +69,7 @@ func (m *Metric) Query() string {
 
 // StackdriverData issues a Datadog query, returning metric descriptor and time series data.
 // Time series data will include points since the given timestamp.
-func (m *Metric) StackdriverData(ctx context.Context, since time.Time) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
+func (m *Metric) StackdriverData(ctx context.Context, since time.Time, record *record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
 	m.client.HttpClient = urlfetch.Client(ctx)
 	// Datadog's `from` parameter is inclusive, so we set it to 1 second after the latest point we've got.
 	series, err := m.client.QueryMetrics(since.Unix()+1, time.Now().Unix(), m.config.Query)

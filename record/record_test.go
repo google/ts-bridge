@@ -12,19 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tsbridge
+package record
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/ts-bridge/mocks"
-
-	"github.com/golang/mock/gomock"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/datastore"
 )
+
+var testCtx context.Context
+
+func TestMain(m *testing.M) {
+	// Use strongly consistent datastore in tests to verify metric record cleanup.
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		panic(err)
+	}
+	req, err := inst.NewRequest("GET", "/", nil)
+	if err != nil {
+		panic(err)
+	}
+	testCtx = appengine.NewContext(req)
+
+	code := m.Run()
+	inst.Close()
+	os.Exit(code)
+}
 
 var metricRecordTests = []struct {
 	name                 string
@@ -41,64 +61,52 @@ func TestMetricRecords(t *testing.T) {
 	for _, tt := range metricRecordTests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
-			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
-			mock := mocks.NewMockSourceMetric(mockCtrl)
-			mock.EXPECT().Query().Return("new-query")
 
 			// initialize the record with update time 1hr in the past.
 			r := MetricRecord{
 				Name:        "metricname",
-				Query:       "old-query",
+				Query:       "query",
 				LastStatus:  "OK: all good",
 				LastAttempt: time.Now().Add(-time.Hour),
 				LastUpdate:  time.Now().Add(-time.Hour),
 			}
-			if err := r.write(testCtx); err != nil {
+			if err := r.Write(testCtx); err != nil {
 				t.Fatalf("error while initializing MetricRecord: %v", err)
 			}
 
-			m, err := NewMetric(testCtx, "metricname", mock, "sd-project")
-			if err != nil {
-				t.Fatalf("error while creating metric: %v", err)
-			}
 			if tt.success {
-				err = m.RecordSuccess(testCtx, tt.points, "Test Message")
+				err = r.UpdateSuccess(testCtx, tt.points, "Test Message")
 			} else {
-				err = m.RecordError(testCtx, fmt.Errorf("Test Message"))
+				err = r.UpdateError(testCtx, fmt.Errorf("Test Message"))
 			}
 			if err != nil {
 				t.Fatalf("error while updating MetricRecord: %v", err)
 			}
 
-			r = MetricRecord{}
-			if err := datastore.Get(testCtx, m.Record.key(testCtx), &r); err != nil {
+			rr := MetricRecord{}
+			if err := datastore.Get(testCtx, r.key(testCtx), &rr); err != nil {
 				t.Fatalf("error while fetching MetricRecord: %v", err)
 			}
 
-			if !strings.Contains(r.LastStatus, "Test Message") {
-				t.Errorf("expected to see LastStatus updated; got %v", r.LastStatus)
+			if !strings.Contains(rr.LastStatus, "Test Message") {
+				t.Errorf("expected to see LastStatus updated; got %v", rr.LastStatus)
 			}
 
-			if !strings.Contains(r.Query, "new-query") {
-				t.Errorf("expected to see Query updated; got %v", r.Query)
+			if time.Now().Sub(rr.LastAttempt) > time.Minute {
+				t.Errorf("expected to see LastAttempt updated; got %v", rr.LastAttempt)
 			}
 
-			if time.Now().Sub(r.LastAttempt) > time.Minute {
-				t.Errorf("expected to see LastAttempt updated; got %v", r.LastAttempt)
-			}
-
-			if time.Now().Sub(r.LastUpdate) > 2*time.Hour {
-				t.Errorf("did not expect LastUpdate to be this old; got %v", r.LastUpdate)
+			if time.Now().Sub(rr.LastUpdate) > 2*time.Hour {
+				t.Errorf("did not expect LastUpdate to be this old; got %v", rr.LastUpdate)
 			}
 
 			if tt.wantLastUpdateChange {
-				if time.Now().Sub(r.LastUpdate) > time.Minute {
-					t.Errorf("expected to see LastAttempt updated; got %v", r.LastUpdate)
+				if time.Now().Sub(rr.LastUpdate) > time.Minute {
+					t.Errorf("expected to see LastAttempt updated; got %v", rr.LastUpdate)
 				}
 			} else {
-				if time.Now().Sub(r.LastUpdate) < time.Hour {
-					t.Errorf("did not expect to see LastUpdate updated; got %v", r.LastUpdate)
+				if time.Now().Sub(rr.LastUpdate) < time.Hour {
+					t.Errorf("did not expect to see LastUpdate updated; got %v", rr.LastUpdate)
 				}
 			}
 		})
@@ -114,15 +122,12 @@ func TestCleanupMetricRecords(t *testing.T) {
 			LastAttempt: time.Now().Add(-time.Hour),
 			LastUpdate:  time.Now().Add(-time.Hour),
 		}
-		if err := r.write(testCtx); err != nil {
+		if err := r.Write(testCtx); err != nil {
 			t.Fatalf("error while initializing MetricRecord: %v", err)
 		}
 	}
 
-	valid := []*Metric{
-		&Metric{Name: "metric1"},
-		&Metric{Name: "metric3"},
-	}
+	valid := []string{"metric1", "metric3"}
 
 	if err := CleanupRecords(testCtx, valid); err != nil {
 		t.Errorf("unexpected error from CleanupRecords: %v", err)

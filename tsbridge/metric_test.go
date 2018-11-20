@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/ts-bridge/mocks"
+	"github.com/google/ts-bridge/record"
 
 	"github.com/golang/mock/gomock"
 	"go.opencensus.io/stats/view"
@@ -76,14 +77,14 @@ var metricUpdateTests = []struct {
 		// This also verifies that `latest` is propagated correctly.
 		latest := time.Now().Add(-5 * time.Minute)
 		sd.EXPECT().LatestTimestamp(gomock.Any(), "sd-project", "sd-metricname").Return(latest, nil)
-		src.EXPECT().StackdriverData(gomock.Any(), latest).Return(nil, nil, fmt.Errorf("another-error"))
+		src.EXPECT().StackdriverData(gomock.Any(), latest, gomock.Any()).Return(nil, nil, fmt.Errorf("another-error"))
 	}, "failed to get data: another-error"},
 
 	{"no new points", func(src *mocks.MockSourceMetric, sd *mocks.MockStackdriverAdapter) {
 		// If `StackdriverData` returns no new points, this should be logged. It's not an error.
 		latest := time.Now().Add(-5 * time.Minute)
 		sd.EXPECT().LatestTimestamp(gomock.Any(), "sd-project", "sd-metricname").Return(latest, nil)
-		src.EXPECT().StackdriverData(gomock.Any(), latest).Return(nil, nil, nil)
+		src.EXPECT().StackdriverData(gomock.Any(), latest, gomock.Any()).Return(nil, nil, nil)
 	}, "0 new points found"},
 
 	{"error writing to stackdriver", func(src *mocks.MockSourceMetric, sd *mocks.MockStackdriverAdapter) {
@@ -93,7 +94,7 @@ var metricUpdateTests = []struct {
 
 		descr := &metricpb.MetricDescriptor{Description: "foobar"}
 		ts := []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{ValueType: metricpb.MetricDescriptor_DOUBLE}}
-		src.EXPECT().StackdriverData(gomock.Any(), latest).Return(descr, ts, nil)
+		src.EXPECT().StackdriverData(gomock.Any(), latest, gomock.Any()).Return(descr, ts, nil)
 		sd.EXPECT().CreateTimeseries(gomock.Any(), "sd-project", "sd-metricname", descr, ts).Return(
 			fmt.Errorf("some-error"))
 	}, "failed to write to Stackdriver: some-error"},
@@ -104,7 +105,7 @@ var metricUpdateTests = []struct {
 
 		descr := &metricpb.MetricDescriptor{Description: "foobar"}
 		ts := []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{ValueType: metricpb.MetricDescriptor_DOUBLE}}
-		src.EXPECT().StackdriverData(gomock.Any(), latest).Return(descr, ts, nil)
+		src.EXPECT().StackdriverData(gomock.Any(), latest, gomock.Any()).Return(descr, ts, nil)
 		sd.EXPECT().CreateTimeseries(gomock.Any(), "sd-project", "sd-metricname", descr, ts).Return(nil)
 	}, "1 new points found"},
 }
@@ -213,12 +214,12 @@ func TestUpdateAllMetrics(t *testing.T) {
 				for j := 0; j < tt.numPoints; j++ {
 					ts = append(ts, &monitoringpb.TimeSeries{ValueType: metricpb.MetricDescriptor_DOUBLE})
 				}
-				src.EXPECT().StackdriverData(gomock.Any(), gomock.Any()).Return(
+				src.EXPECT().StackdriverData(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 					&metricpb.MetricDescriptor{}, ts, nil)
 				src.EXPECT().StackdriverName().MaxTimes(100).Return(name)
 				metric := &Metric{
 					Name:   name,
-					Record: &MetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+					Record: &record.MetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
 					Source: src,
 				}
 				config.metrics = append(config.metrics, metric)
@@ -243,13 +244,13 @@ func TestUpdateAllMetrics(t *testing.T) {
 
 			val, ok := exporter.values["ts_bridge/import_latencies"]
 			latency := time.Duration(val.(*view.DistributionData).Mean) * time.Millisecond
-			if !ok || !durationWithin(latency, tt.wantTotalLatency, 50*time.Millisecond) {
+			if !ok || !durationWithin(latency, tt.wantTotalLatency, 75*time.Millisecond) {
 				t.Errorf("expected to see import latency around %v; got %v", tt.wantTotalLatency, latency)
 			}
 
 			val, ok = exporter.values["ts_bridge/oldest_metric_age"]
 			age := time.Duration(val.(*view.LastValueData).Value) * time.Millisecond
-			if !ok || !durationWithin(age, tt.wantOldestAge, 50*time.Millisecond) {
+			if !ok || !durationWithin(age, tt.wantOldestAge, 75*time.Millisecond) {
 				t.Errorf("expected oldest metric age around %v; got %v", tt.wantOldestAge, age)
 			}
 		})
@@ -267,7 +268,7 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 			&Metric{
 				// Having an emoji symbol in metric name should produce an error while defining an OpenCensus tag.
 				Name:   "invalid metric name 🥒",
-				Record: &MetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+				Record: &record.MetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
 				Source: src,
 			},
 		},

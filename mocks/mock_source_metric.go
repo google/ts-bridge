@@ -7,6 +7,7 @@ package mocks
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
+	record "github.com/google/ts-bridge/record"
 	metric "google.golang.org/genproto/googleapis/api/metric"
 	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
 	reflect "reflect"
@@ -49,8 +50,8 @@ func (mr *MockSourceMetricMockRecorder) Query() *gomock.Call {
 }
 
 // StackdriverData mocks base method
-func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
-	ret := m.ctrl.Call(m, "StackdriverData", arg0, arg1)
+func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 *record.MetricRecord) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
+	ret := m.ctrl.Call(m, "StackdriverData", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*metric.MetricDescriptor)
 	ret1, _ := ret[1].([]*v3.TimeSeries)
 	ret2, _ := ret[2].(error)
@@ -58,8 +59,8 @@ func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time)
 }
 
 // StackdriverData indicates an expected call of StackdriverData
-func (mr *MockSourceMetricMockRecorder) StackdriverData(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StackdriverData", reflect.TypeOf((*MockSourceMetric)(nil).StackdriverData), arg0, arg1)
+func (mr *MockSourceMetricMockRecorder) StackdriverData(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StackdriverData", reflect.TypeOf((*MockSourceMetric)(nil).StackdriverData), arg0, arg1, arg2)
 }
 
 // StackdriverName mocks base method
