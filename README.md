@@ -174,8 +174,11 @@ metric:
 *   `destination`: name of the Stackdriver destination that query result will be
     written to. Destinations need to be explicitly listed in the
     `stackdriver_destinations` section of the configuration file.
+*   `cumulative`: a boolean flag describing whether query result should be
+    imported as a cumulative metric (a monotonically increasing counter). See
+    [Cumulative metrics](#cumulative-metrics) section below for more details.
 
-All parameters are required.
+All parameters are required, except for `cumulative` (that defaults to `false`).
 
 Please keep in mind the following details about Datadog API:
 
@@ -201,7 +204,7 @@ Please keep in mind the following details about Datadog API:
     [alignment period](https://cloud.google.com/monitoring/charts/metrics-selector#alignment)
     shorter than 1 minute.
 
-## Metric Targets
+## Metric Destinations
 
 ### Stackdriver
 
@@ -262,13 +265,70 @@ the `env_variables` section of `app/app.yaml`.
     high might result in the App Engine instance running out of RAM.
 *   `DATADOG_MIN_POINT_AGE`: minimum age of a data point returned by Datadog
     that makes it eligible for being written. Points that are very fresh
-    (default is 1 minute) are ignored, since Datadog might return incomplete
+    (default is 1.5 minutes) are ignored, since Datadog might return incomplete
     data for them if some input data is delayed.
+*   `DATADOG_COUNTER_RESET_INTERVAL`: while importing counters, ts-bridge needs
+    to reset 'start time' regularly to keep the query time window small enough
+    to avoid [aggregation](https://docs.datadoghq.com/graphing/faq/what-is-the-granularity-of-my-graphs-am-i-seeing-raw-data-or-aggregates-on-my-graph/)
+    on Datadog side. This parameter defines how often a new start time is
+    chosen. 30 minutes should be sufficient for metrics that have a point
+    every 10 seconds. See [Cumulative metrics](#cumulative-metrics) section
+    below for more details.
 *   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
     (disabled by default).
 
 You can use `--env_var` flag to override these environment variables while
 running the app via `dev_appserver.py`.
+
+# Cumulative metrics
+
+Stackdriver supports cumulative metrics, which are monotonically increasing
+counters. Such metrics allow calculating deltas and rates over different
+[alignment periods](https://cloud.google.com/monitoring/custom-metrics/reading-metrics#aligning).
+
+While Datadog does not have first-class support for cumulative metrics, it
+is possible to use the
+[cumsum](https://docs.datadoghq.com/graphing/functions/arithmetic/#cumulative-sum)
+query function to retreive a cumulative sum. Time Series Bridge can use
+result of such queries and import them as cumulative metrics, but such
+queries need to be explicitly annotated with a `cumulative` option in
+`metrics.yaml` being set to `true`.
+
+For queries that are marked as `cumulative`, ts-bridge will regularly
+choose a 'start time' and then issue queries with that time passed in
+the [from](https://docs.datadoghq.com/api/?lang=python#query-timeseries-points)
+API parameter. As the result, Datadog will return a monotonically
+increasing time series with a sum of all measurements since 'start time'.
+To avoid aggregation of multiple points into one on Datadog side,
+'start time' regularly gets moved forward, keeping the query time window
+short (see `DATADOG_COUNTER_RESET_INTERVAL`).
+Such resets are handled correctly by Stackdriver, since it requires
+explicit start time to be provided for cumulative metric points.
+
+Often, for Datadog to provide a cumulative sum of all measurements,
+the `.as_count()` suffix needs to be appended to metric name. Otherwise
+measurements might be provided as per-second rates rather than exact counts.
+
+For metrics that have measurements more often than every minute, you might
+also want to append the `.rollup()` function as
+[described below](#writing-points-to-stackdriver-too-frequently).
+
+For example, to import the counter metric called `http_requests` as a
+cumulative metric to Stackdriver, you might configure the following query in
+ts-bridge (and set `cumulative` to `true`):
+
+    cumsum(sum:http_requests{*}.as_count().rollup(sum, 60))
+
+To unpack this:
+
+* `cumsum()` makes Datadog return a cumulative sum of measurements;
+* `sum:` prefix ensures that sum is used as the aggregation method if there
+  are multiple time series with the same metric name but different tags
+  (for example, reported from different machines);
+* `.as_count()` suffix gathers actual measurements rather than per-second
+  rates;
+* `.rollup(sum, 60)` aggregates values into 60-second intervals in case
+  there are multiple measurements for this metric reported per minute.
 
 # Status Page
 

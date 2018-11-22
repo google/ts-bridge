@@ -19,7 +19,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"google.golang.org/appengine"
 )
@@ -31,7 +30,7 @@ func fakeAppIDFunc(app string) func(context.Context) string {
 }
 
 func TestNewConfigSimple(t *testing.T) {
-	cfg, err := NewConfig(testCtx, "testdata/valid.yaml", time.Second)
+	cfg, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -48,7 +47,7 @@ func TestNewConfigSimple(t *testing.T) {
 	// project_id parameter is required when app id cannot be detected.
 	for _, appid := range []string{"", "None"} {
 		appIDFunc = fakeAppIDFunc(appid)
-		_, err := NewConfig(testCtx, "testdata/valid.yaml", time.Second)
+		_, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml"})
 		if !strings.Contains(err.Error(), "please provide project_id for") {
 			t.Errorf("passing project_id should be required")
 		}
@@ -69,7 +68,7 @@ func TestNewConfigFailedValidation(t *testing.T) {
 		{"no_datadog_keys.yaml", "configuration file validation error"},
 		{"invalid_name.yaml", "configuration file validation error"},
 	} {
-		_, err := NewConfig(testCtx, filepath.Join("testdata", tt.filename), time.Second)
+		_, err := NewConfig(testCtx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename)})
 		if !strings.Contains(err.Error(), tt.wantErr) {
 			t.Errorf("expected NewConfig error '%v'; got '%v'", tt.wantErr, err)
 		}

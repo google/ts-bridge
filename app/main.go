@@ -151,7 +151,16 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 		return nil, fmt.Errorf("Could not parse DATADOG_MIN_POINT_AGE: %v", err)
 	}
 
-	return tsbridge.NewConfig(ctx, os.Getenv("CONFIG_FILE"), ddMinPointAge)
+	ddResetInterval, err := time.ParseDuration(os.Getenv("DATADOG_COUNTER_RESET_INTERVAL"))
+	if err != nil {
+		return nil, fmt.Errorf("Could not parse DATADOG_COUNTER_RESET_INTERVAL: %v", err)
+	}
+
+	return tsbridge.NewConfig(ctx, &tsbridge.ConfigOptions{
+		Filename:                    os.Getenv("CONFIG_FILE"),
+		DatadogMinPointAge:          ddMinPointAge,
+		DatadogCounterResetInterval: ddResetInterval,
+	})
 }
 
 // Since some URLs are triggered by App Engine cron, error messages returned in HTTP response

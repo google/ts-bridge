@@ -67,9 +67,16 @@ func (c *Config) Metrics() []*Metric {
 	return c.metrics
 }
 
+// ConfigOptions is a set of global options required to initialize configuration.
+type ConfigOptions struct {
+	Filename                    string
+	DatadogMinPointAge          time.Duration
+	DatadogCounterResetInterval time.Duration
+}
+
 // NewConfig reads and validates a configuration file, returning the Config struct.
-func NewConfig(ctx context.Context, filename string, ddMinPointAge time.Duration) (*Config, error) {
-	data, err := ioutil.ReadFile(filename)
+func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
+	data, err := ioutil.ReadFile(opts.Filename)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +109,10 @@ func NewConfig(ctx context.Context, filename string, ddMinPointAge time.Duration
 		if !ok {
 			return nil, fmt.Errorf("destination '%s' not found", m.Destination)
 		}
-		source := datadog.NewSourceMetric(m.Name, &m.MetricConfig, ddMinPointAge)
+		source, err := datadog.NewSourceMetric(m.Name, &m.MetricConfig, opts.DatadogMinPointAge, opts.DatadogCounterResetInterval)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create source metric '%s': %v", m.Name, err)
+		}
 		metric, err := NewMetric(ctx, m.Name, source, project)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create metric '%s': %v", m.Name, err)

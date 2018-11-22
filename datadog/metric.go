@@ -17,6 +17,7 @@ package datadog
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/ts-bridge/record"
@@ -33,10 +34,11 @@ import (
 
 // Metric defines a Datadog-based metric. It implements the SourceMetric interface.
 type Metric struct {
-	Name        string
-	config      *MetricConfig
-	client      *ddapi.Client
-	minPointAge time.Duration
+	Name                 string
+	config               *MetricConfig
+	client               *ddapi.Client
+	minPointAge          time.Duration
+	counterResetInterval time.Duration
 }
 
 // MetricConfig defines configuration file parameters for a specific metric imported from Datadog.
@@ -44,17 +46,23 @@ type MetricConfig struct {
 	APIKey         string `yaml:"api_key" validate:"nonzero"`
 	ApplicationKey string `yaml:"application_key" validate:"nonzero"`
 	Query          string `validate:"nonzero"`
+	Cumulative     bool
 }
 
 // NewSourceMetric creates a new SourceMetric from a metric name and configuration parameters.
-func NewSourceMetric(name string, config *MetricConfig, minPointAge time.Duration) *Metric {
+func NewSourceMetric(name string, config *MetricConfig, minPointAge, counterResetInterval time.Duration) (*Metric, error) {
+	if config.Cumulative && !strings.Contains(config.Query, "cumsum") {
+		return nil, fmt.Errorf("Query for the cumulative metric %s does not contain the cumsum Datadog function", name)
+	}
+
 	client := ddapi.NewClient(config.APIKey, config.ApplicationKey)
 	return &Metric{
-		Name:        name,
-		config:      config,
-		client:      client,
-		minPointAge: minPointAge,
-	}
+		Name:                 name,
+		config:               config,
+		client:               client,
+		minPointAge:          minPointAge,
+		counterResetInterval: counterResetInterval,
+	}, nil
 }
 
 // StackdriverName returns the full Stackdriver metric name (also called "metric type") for this metric.
@@ -68,11 +76,21 @@ func (m *Metric) Query() string {
 }
 
 // StackdriverData issues a Datadog query, returning metric descriptor and time series data.
-// Time series data will include points since the given timestamp.
-func (m *Metric) StackdriverData(ctx context.Context, since time.Time, record *record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
+// Time series data will include points after the given lastPoint timestamp.
+func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
 	m.client.HttpClient = urlfetch.Client(ctx)
+
 	// Datadog's `from` parameter is inclusive, so we set it to 1 second after the latest point we've got.
-	series, err := m.client.QueryMetrics(since.Unix()+1, time.Now().Unix(), m.config.Query)
+	from := lastPoint.Add(time.Second)
+	if m.config.Cumulative {
+		var err error
+		from, err = m.counterStartTime(ctx, lastPoint, rec)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	series, err := m.client.QueryMetrics(from.Unix(), time.Now().Unix(), m.config.Query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -82,24 +100,82 @@ func (m *Metric) StackdriverData(ctx context.Context, since time.Time, record *r
 	} else if len(series) > 1 {
 		return nil, nil, fmt.Errorf("Query '%s' returned %d time series", m.config.Query, len(series))
 	}
-	points, err := m.filterPoints(series[0].Points)
+
+	points, err := m.filterPoints(lastPoint, series[0].Points)
 	log.Debugf(ctx, "Got %d points (%d after filtering) in response to the Datadog query '%s'", len(series[0].Points), len(points), m.config.Query)
-	return m.metricDescriptor(series[0]), m.convertTimeSeries(points), nil
+
+	startTime, err := ptypes.TimestampProto(from)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Count not convert timestamp %v to proto: %v", from, err)
+	}
+	return m.metricDescriptor(series[0]), m.convertTimeSeries(startTime, points), nil
 }
 
-// filterPoints gets a slice of Datadog points, and returns a similar slice, but without points that are too fresh.
-func (m *Metric) filterPoints(points []ddapi.DataPoint) ([]ddapi.DataPoint, error) {
+// counterStartTime returns the start time for a cumulative metric. It's used as
+// the `from` parameter while issuing Datadog queries, and also as the `start
+// time` field in points reported for this cumulative metric to SD.
+func (m *Metric) counterStartTime(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (time.Time, error) {
+	// Start time needs to be reset regularly, since otherwise we will be querying
+	// Datadog for a time window large enough for aggregation to kick in.
+	if time.Now().Sub(rec.GetCounterStartTime()) > m.counterResetInterval {
+		var start time.Time
+		if time.Now().Sub(lastPoint) <= m.counterResetInterval {
+			// This is the common case: choose the new start time based on the last point
+			// timestamp. This ensures continuity of data.
+			// Datadog's timestamps have 1-second granularity, and timestamp X covers
+			// data between X and X+1s, so we increment last point timestamp by 1 second
+			// while choosing a new start time.
+			start = lastPoint.Add(time.Second)
+		} else {
+			// This is the rare case: when last point is too old, we cannot use it as a
+			// basis for new start time, since it will make new start time still older
+			// than ResetInterval, and it will immediately need to be moved forward
+			// again. This only happens when a new metric is added, or when writes to
+			// Stackdriver have been failing for more than ResetInterval.
+			// We need to choose an arbitrary point in the recent past as the new start
+			// time, and we select half of the reset interval: this ensures that we
+			// backfill some data, but won't need to reset the start time again for a
+			// while.
+			start = time.Now().Add(-m.counterResetInterval / 2)
+		}
+		if err := rec.SetCounterStartTime(ctx, start); err != nil {
+			return time.Time{}, fmt.Errorf("Could not set counter start time: %v", err)
+		}
+		log.Infof(ctx, "Counter start time for %s has been reset to %v", m.Name, start)
+	}
+	return rec.GetCounterStartTime(), nil
+}
+
+// filterPoints gets a slice of Datadog points, and returns a similar slice, but without points that are too fresh or
+// too old.
+func (m *Metric) filterPoints(lastPoint time.Time, points []ddapi.DataPoint) ([]ddapi.DataPoint, error) {
 	var output []ddapi.DataPoint
 	for _, p := range points {
 		ts, err := ptypes.Timestamp(pointTimestamp(p))
 		if err != nil {
 			return nil, fmt.Errorf("Could not parse point timestamp for %v: %v", p, err)
 		}
-		if time.Now().Sub(ts) >= m.minPointAge {
-			output = append(output, p)
+		// Ignore points that are too fresh, since they might contain incomplete data.
+		if time.Now().Sub(ts) < m.minPointAge {
+			continue
 		}
+		// Ignore points that are equal to or older than the last written point. For gauge metrics this is a noop,
+		// since we only query Datadog for new points, but for cumulative metrics this is where we discard already
+		// written data (we still need to pull it from Datadog for it to return us a cumulative sum).
+		if lastPoint.Sub(ts) >= 0 {
+			continue
+		}
+		output = append(output, p)
 	}
 	return output, nil
+}
+
+// sdMetricKind returns Stackdriver metric kind for this metric.
+func (m *Metric) metricKind() metricpb.MetricDescriptor_MetricKind {
+	if m.config.Cumulative {
+		return metricpb.MetricDescriptor_CUMULATIVE
+	}
+	return metricpb.MetricDescriptor_GAUGE
 }
 
 // metricDescriptor creates a Stackdriver MetricDescriptor based on a Datadog series.
@@ -107,9 +183,8 @@ func (m *Metric) metricDescriptor(series ddapi.Series) *metricpb.MetricDescripto
 	d := &metricpb.MetricDescriptor{
 		// Name does not need to be set here; it will be set by Stackdriver Adapter based on the Stackdriver
 		// project that this metric is written to.
-		Type: m.StackdriverName(),
-		// Query results are gauges; there does not seem to be a way to get cumulative metrics from Datadog.
-		MetricKind: metricpb.MetricDescriptor_GAUGE,
+		Type:       m.StackdriverName(),
+		MetricKind: m.metricKind(),
 		// Datadog API does not declare value type, and the client library exposes all points as float64.
 		ValueType:   metricpb.MetricDescriptor_DOUBLE,
 		Description: fmt.Sprintf("Datadog query: %s", m.config.Query),
@@ -131,26 +206,28 @@ func (m *Metric) metricDescriptor(series ddapi.Series) *metricpb.MetricDescripto
 // A separate TimeSeries message is created for each point because Stackdriver only allows sending a single
 // point in a given request for each time series, so multiple points will need to be sent as separate requests.
 // See https://cloud.google.com/monitoring/custom-metrics/creating-metrics#writing-ts
-func (m *Metric) convertTimeSeries(points []ddapi.DataPoint) []*monitoringpb.TimeSeries {
+func (m *Metric) convertTimeSeries(start *timestamp.Timestamp, points []ddapi.DataPoint) []*monitoringpb.TimeSeries {
 	ts := make([]*monitoringpb.TimeSeries, 0, len(points))
 	for _, p := range points {
 		ts = append(ts, &monitoringpb.TimeSeries{
 			Metric:     &metricpb.Metric{Type: m.StackdriverName()},
 			Resource:   &monitoredres.MonitoredResource{Type: "global"},
-			MetricKind: metricpb.MetricDescriptor_GAUGE,
+			MetricKind: m.metricKind(),
 			ValueType:  metricpb.MetricDescriptor_DOUBLE,
-			Points:     []*monitoringpb.Point{convertPoint(p)},
+			Points:     []*monitoringpb.Point{m.convertPoint(start, p)},
 		})
 	}
 	return ts
 }
 
 // convertPoint converts a Datadog point into a Stackdriver point.
-func convertPoint(p ddapi.DataPoint) *monitoringpb.Point {
+func (m *Metric) convertPoint(start *timestamp.Timestamp, p ddapi.DataPoint) *monitoringpb.Point {
+	i := &monitoringpb.TimeInterval{EndTime: pointTimestamp(p)}
+	if m.config.Cumulative {
+		i.StartTime = start
+	}
 	return &monitoringpb.Point{
-		Interval: &monitoringpb.TimeInterval{
-			EndTime: pointTimestamp(p),
-		},
+		Interval: i,
 		Value: &monitoringpb.TypedValue{
 			Value: &monitoringpb.TypedValue_DoubleValue{
 				DoubleValue: *p[1],

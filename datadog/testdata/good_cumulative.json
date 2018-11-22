@@ -1,0 +1,50 @@
+{
+    "from_date": 1542908794000,
+    "group_by": [],
+    "message": "",
+    "query": "cumsum(sum:system.net.packets_in.count{*}.as_count())",
+    "res_type": "time_series",
+    "resp_version": 1,
+    "series": [
+        {
+            "aggr": "sum",
+            "attributes": {},
+            "display_name": "cumsum(system.net.packets_in.count)",
+            "end": 1542908831000,
+            "expression": "cumsum(sum:system.net.packets_in.count{*}.as_count())",
+            "interval": 1,
+            "length": 3,
+            "metric": "cumsum(system.net.packets_in.count)",
+            "pointlist": [
+                [
+                    1542908801000.0,
+                    2617.9245496690273
+                ],
+                [
+                    1542908816000.0,
+                    2703.298837274313
+                ],
+                [
+                    1542908831000.0,
+                    2792.2705087065697
+                ]
+            ],
+            "query_index": 0,
+            "scope": "*",
+            "start": 1542908801000,
+            "unit": [
+                {
+                    "family": "network",
+                    "id": 26,
+                    "name": "packet",
+                    "plural": "packets",
+                    "scale_factor": 1.0,
+                    "short_name": "pkt"
+                },
+                null
+            ]
+        }
+    ],
+    "status": "ok",
+    "to_date": 1542908854000
+}

@@ -18,7 +18,11 @@ env_variables:
   UPDATE_PARALLELISM: 1
   # Points received from Datadog that are too fresh will be discarded to allow data to be fully processed and aggregated
   # on Datadog side. This variable defines the threshold for "too fresh".
-  DATADOG_MIN_POINT_AGE: "1m"
+  DATADOG_MIN_POINT_AGE: "90s"
+  # While importing counters, ts-bridge needs to reset 'start time' regularly to keep the query time window small enough
+  # to avoid aggregation. This parameter defines how often a new start time is chosen. 30min should be sufficient for
+  # metrics that have a point every 10 seconds.
+  DATADOG_COUNTER_RESET_INTERVAL: "30m"
   # Uncomment to enable the status web page.
   #ENABLE_STATUS_PAGE: "yes"
 
