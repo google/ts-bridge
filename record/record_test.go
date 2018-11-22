@@ -57,21 +57,21 @@ var metricRecordTests = []struct {
 	{"5 points written", true, 5, true},
 }
 
-func TestMetricRecords(t *testing.T) {
+func TestDatastoreMetricRecords(t *testing.T) {
 	for _, tt := range metricRecordTests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 
 			// initialize the record with update time 1hr in the past.
-			r := MetricRecord{
+			r := DatastoreMetricRecord{
 				Name:        "metricname",
 				Query:       "query",
 				LastStatus:  "OK: all good",
 				LastAttempt: time.Now().Add(-time.Hour),
 				LastUpdate:  time.Now().Add(-time.Hour),
 			}
-			if err := r.Write(testCtx); err != nil {
-				t.Fatalf("error while initializing MetricRecord: %v", err)
+			if err := r.write(testCtx); err != nil {
+				t.Fatalf("error while initializing DatastoreMetricRecord: %v", err)
 			}
 
 			if tt.success {
@@ -80,12 +80,12 @@ func TestMetricRecords(t *testing.T) {
 				err = r.UpdateError(testCtx, fmt.Errorf("Test Message"))
 			}
 			if err != nil {
-				t.Fatalf("error while updating MetricRecord: %v", err)
+				t.Fatalf("error while updating DatastoreMetricRecord: %v", err)
 			}
 
-			rr := MetricRecord{}
+			rr := DatastoreMetricRecord{}
 			if err := datastore.Get(testCtx, r.key(testCtx), &rr); err != nil {
-				t.Fatalf("error while fetching MetricRecord: %v", err)
+				t.Fatalf("error while fetching DatastoreMetricRecord: %v", err)
 			}
 
 			if !strings.Contains(rr.LastStatus, "Test Message") {
@@ -113,17 +113,17 @@ func TestMetricRecords(t *testing.T) {
 	}
 }
 
-func TestCleanupMetricRecords(t *testing.T) {
+func TestCleanupDatastoreMetricRecords(t *testing.T) {
 	for _, name := range []string{"metric1", "metric2"} {
-		r := MetricRecord{
+		r := DatastoreMetricRecord{
 			Name:        name,
 			Query:       "query",
 			LastStatus:  "OK: all good",
 			LastAttempt: time.Now().Add(-time.Hour),
 			LastUpdate:  time.Now().Add(-time.Hour),
 		}
-		if err := r.Write(testCtx); err != nil {
-			t.Fatalf("error while initializing MetricRecord: %v", err)
+		if err := r.write(testCtx); err != nil {
+			t.Fatalf("error while initializing DatastoreMetricRecord: %v", err)
 		}
 	}
 
@@ -134,7 +134,7 @@ func TestCleanupMetricRecords(t *testing.T) {
 	}
 
 	q := datastore.NewQuery(kindName)
-	var records []*MetricRecord
+	var records []*DatastoreMetricRecord
 	if _, err := q.GetAll(testCtx, &records); err != nil {
 		t.Fatalf("error while reading metric records: %v", err)
 	}

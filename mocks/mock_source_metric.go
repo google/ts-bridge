@@ -50,7 +50,7 @@ func (mr *MockSourceMetricMockRecorder) Query() *gomock.Call {
 }
 
 // StackdriverData mocks base method
-func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 *record.MetricRecord) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
+func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 record.MetricRecord) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
 	ret := m.ctrl.Call(m, "StackdriverData", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*metric.MetricDescriptor)
 	ret1, _ := ret[1].([]*v3.TimeSeries)
