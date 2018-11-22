@@ -36,7 +36,7 @@ type Metric struct {
 	Name      string
 	Source    SourceMetric
 	SDProject string
-	Record    *record.MetricRecord
+	Record    record.MetricRecord
 }
 
 //go:generate mockgen -destination=../mocks/mock_source_metric.go -package=mocks github.com/google/ts-bridge/tsbridge SourceMetric
@@ -45,7 +45,7 @@ type Metric struct {
 type SourceMetric interface {
 	StackdriverName() string
 	Query() string
-	StackdriverData(ctx context.Context, since time.Time, record *record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error)
+	StackdriverData(ctx context.Context, since time.Time, record record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error)
 }
 
 //go:generate mockgen -destination=../mocks/mock_sd_adapter.go -package=mocks github.com/google/ts-bridge/tsbridge StackdriverAdapter
@@ -87,8 +87,8 @@ func UpdateAllMetrics(ctx context.Context, c *Config, sd StackdriverAdapter, par
 
 	// After all metrics are updated, find the oldest write timestamp.
 	for _, m := range c.Metrics() {
-		if m.Record.LastUpdate.Before(oldestWrite) {
-			oldestWrite = m.Record.LastUpdate
+		if m.Record.GetLastUpdate().Before(oldestWrite) {
+			oldestWrite = m.Record.GetLastUpdate()
 		}
 	}
 	for err := range errchan {
@@ -99,17 +99,16 @@ func UpdateAllMetrics(ctx context.Context, c *Config, sd StackdriverAdapter, par
 
 // NewMetric creates a Metric based on a SourceMetric and the destination Stackdriver project.
 func NewMetric(ctx context.Context, name string, s SourceMetric, sdProject string) (*Metric, error) {
-	m := &Metric{
+	r, err := record.NewDatastoreMetricRecord(ctx, name, s.Query())
+	if err != nil {
+		return nil, err
+	}
+	return &Metric{
 		Name:      name,
 		Source:    s,
 		SDProject: sdProject,
-		Record:    &record.MetricRecord{Name: name},
-	}
-	if err := m.Record.Load(ctx); err != nil {
-		return nil, err
-	}
-	m.Record.Query = s.Query()
-	return m, nil
+		Record:    r,
+	}, nil
 }
 
 // Update issues a configured query and imports new points to Stackdriver.

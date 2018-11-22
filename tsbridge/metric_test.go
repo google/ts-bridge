@@ -124,8 +124,9 @@ func TestMetricUpdate(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error while creating metric: %v", err)
 			}
-			m.Record.LastStatus = "OK: all good"
-			m.Record.LastAttempt = time.Now().Add(-time.Hour)
+			rec := m.Record.(*record.DatastoreMetricRecord)
+			rec.LastStatus = "OK: all good"
+			rec.LastAttempt = time.Now().Add(-time.Hour)
 
 			mockSD := mocks.NewMockStackdriverAdapter(mockCtrl)
 			tt.setup(mockSource, mockSD)
@@ -137,11 +138,11 @@ func TestMetricUpdate(t *testing.T) {
 			if err := m.Update(testCtx, mockSD, collector); err != nil {
 				t.Errorf("Metric.Update() returned error %v", err)
 			}
-			if time.Now().Sub(m.Record.LastAttempt) > time.Minute {
+			if time.Now().Sub(rec.LastAttempt) > time.Minute {
 				t.Errorf("expected to see LastAttempt updated")
 			}
-			if !strings.Contains(m.Record.LastStatus, tt.wantStatus) {
-				t.Errorf("expected to see LastStatus contain '%s'; got %s", tt.wantStatus, m.Record.LastStatus)
+			if !strings.Contains(rec.LastStatus, tt.wantStatus) {
+				t.Errorf("expected to see LastStatus contain '%s'; got %s", tt.wantStatus, rec.LastStatus)
 			}
 			collector.Close()
 			if got, ok := exporter.values["ts_bridge/metric_import_latencies:metricname"]; !ok {
@@ -219,7 +220,7 @@ func TestUpdateAllMetrics(t *testing.T) {
 				src.EXPECT().StackdriverName().MaxTimes(100).Return(name)
 				metric := &Metric{
 					Name:   name,
-					Record: &record.MetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+					Record: &record.DatastoreMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
 					Source: src,
 				}
 				config.metrics = append(config.metrics, metric)
@@ -268,7 +269,7 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 			&Metric{
 				// Having an emoji symbol in metric name should produce an error while defining an OpenCensus tag.
 				Name:   "invalid metric name 🥒",
-				Record: &record.MetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+				Record: &record.DatastoreMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
 				Source: src,
 			},
 		},
