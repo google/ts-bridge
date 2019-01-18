@@ -362,6 +362,9 @@ metrics to Stackdriver:
 All metrics are reported as Stackdriver custom metrics and have names prefixed
 by `custom.googleapis.com/opencensus/ts_bridge/`
 
+`examples/` directory in this repository contains a suggested Stackdriver Alerting
+Policy you can use to receive alerts when metric importing breaks.
+
 # Troubleshooting
 
 This section describes common issues you might experience with ts-bridge.
