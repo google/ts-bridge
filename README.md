@@ -88,6 +88,7 @@ using a git repository and
         project_id: "your_project_name"
     ```
 1.  Turn on the status page (uncomment #ENABLE\_STATUS\_PAGE: "yes" in `app.yaml`)
+1.  Update `SD_PROJECT_FOR_INTERNAL_METRICS` in your `app.yaml` to match the name of your GCP project.
 1.  Launch a dev server
     *   `dev_appserver.py app.yaml --port 18080`
 1.  Test via localhost/sync
@@ -128,25 +129,26 @@ using a git repository and
 1.  Verify that metrics are visible in the
     [Stackdriver UI](https://app.google.stackdriver.com/metrics-explorer)
 1.  Kill the local dev server
+1.  Revert `SD_PROJECT_FOR_INTERNAL_METRICS` to `""` in `app.yaml`
 
 ## Deploy In Production
 
 1.  Ensure that you either have **Owner** permissions for the whole Cloud
     project, or at minimum the **App Engine Admin** and **Cloud Scheduler
     Admin** roles
-1.  Disable the status page (comment out ENABLE\_STATUS\_PAGE: "yes" in
+2.  Disable the status page (comment out ENABLE\_STATUS\_PAGE: "yes" in
     `app.yaml`)
     *   See [below](#status-page) if you'd like to keep the status page enabled
         in prod.
-1.  Create the App Engine application
+3.  Create the App Engine application
     *   `gcloud app create`
     *   Choose the App Engine region. If you are using ts-bridge to import
         metrics originating from a system running on GCP, you should run
         ts-bridge in a different Cloud region from the system itself to ensure
         independent failure domains.
-1.  Deploy app
+4.  Deploy app
     *   `goapp deploy -application <your_project_name> -version live`
-1.  Verify in the Stackdriver metrics explorer that metrics are being imported
+5.  Verify in the Stackdriver metrics explorer that metrics are being imported
     once a minute
 
 # metrics.yaml Configuration
