@@ -39,6 +39,7 @@ func (m *MockSourceMetric) EXPECT() *MockSourceMetricMockRecorder {
 
 // Query mocks base method
 func (m *MockSourceMetric) Query() string {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Query")
 	ret0, _ := ret[0].(string)
 	return ret0
@@ -46,11 +47,13 @@ func (m *MockSourceMetric) Query() string {
 
 // Query indicates an expected call of Query
 func (mr *MockSourceMetricMockRecorder) Query() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockSourceMetric)(nil).Query))
 }
 
 // StackdriverData mocks base method
 func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 record.MetricRecord) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StackdriverData", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*metric.MetricDescriptor)
 	ret1, _ := ret[1].([]*v3.TimeSeries)
@@ -60,11 +63,13 @@ func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time,
 
 // StackdriverData indicates an expected call of StackdriverData
 func (mr *MockSourceMetricMockRecorder) StackdriverData(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StackdriverData", reflect.TypeOf((*MockSourceMetric)(nil).StackdriverData), arg0, arg1, arg2)
 }
 
 // StackdriverName mocks base method
 func (m *MockSourceMetric) StackdriverName() string {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StackdriverName")
 	ret0, _ := ret[0].(string)
 	return ret0
@@ -72,5 +77,6 @@ func (m *MockSourceMetric) StackdriverName() string {
 
 // StackdriverName indicates an expected call of StackdriverName
 func (mr *MockSourceMetricMockRecorder) StackdriverName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StackdriverName", reflect.TypeOf((*MockSourceMetric)(nil).StackdriverName))
 }

@@ -38,6 +38,7 @@ func (m *MockStackdriverAdapter) EXPECT() *MockStackdriverAdapterMockRecorder {
 
 // Close mocks base method
 func (m *MockStackdriverAdapter) Close() error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close")
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -45,11 +46,13 @@ func (m *MockStackdriverAdapter) Close() error {
 
 // Close indicates an expected call of Close
 func (mr *MockStackdriverAdapterMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStackdriverAdapter)(nil).Close))
 }
 
 // CreateTimeseries mocks base method
 func (m *MockStackdriverAdapter) CreateTimeseries(arg0 context.Context, arg1, arg2 string, arg3 *metric.MetricDescriptor, arg4 []*v3.TimeSeries) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateTimeseries", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -57,11 +60,13 @@ func (m *MockStackdriverAdapter) CreateTimeseries(arg0 context.Context, arg1, ar
 
 // CreateTimeseries indicates an expected call of CreateTimeseries
 func (mr *MockStackdriverAdapterMockRecorder) CreateTimeseries(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTimeseries", reflect.TypeOf((*MockStackdriverAdapter)(nil).CreateTimeseries), arg0, arg1, arg2, arg3, arg4)
 }
 
 // LatestTimestamp mocks base method
 func (m *MockStackdriverAdapter) LatestTimestamp(arg0 context.Context, arg1, arg2 string) (time.Time, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LatestTimestamp", arg0, arg1, arg2)
 	ret0, _ := ret[0].(time.Time)
 	ret1, _ := ret[1].(error)
@@ -70,5 +75,6 @@ func (m *MockStackdriverAdapter) LatestTimestamp(arg0 context.Context, arg1, arg
 
 // LatestTimestamp indicates an expected call of LatestTimestamp
 func (mr *MockStackdriverAdapterMockRecorder) LatestTimestamp(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LatestTimestamp", reflect.TypeOf((*MockStackdriverAdapter)(nil).LatestTimestamp), arg0, arg1, arg2)
 }
