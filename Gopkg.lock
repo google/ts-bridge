@@ -245,12 +245,14 @@
   revision = "6c5c3d4ff96110173c63a6ffea8f2ffc8bb541b4"
 
 [[projects]]
-  digest = "1:1bd78b620cae476a55b10617b5ce2d089d13d62e10f7eeb84d15d310b04e04de"
+  digest = "1:c45665a21fb6639f4c3e4e5217f247d1b99f3f3098166b139b9aa0f76aadcba8"
   name = "google.golang.org/appengine"
   packages = [
     ".",
     "aetest",
     "datastore",
+    "datastore/internal/cloudkey",
+    "datastore/internal/cloudpb",
     "internal",
     "internal/app_identity",
     "internal/base",
@@ -267,8 +269,8 @@
     "user",
   ]
   pruneopts = "UT"
-  revision = "b1f26356af11148e710935ed1ac8a7f5702c7612"
-  version = "v1.1.0"
+  revision = "b2f4a3cf3c67576a2ee09e1fe62656a5086ce880"
+  version = "v1.6.1"
 
 [[projects]]
   branch = "master"
