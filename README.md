@@ -63,9 +63,6 @@ using a git repository and
             auth cookie:
         *   `gcloud init`
         *   `gcloud auth application-default login`
-    *   Download and install the
-        [original App Engine SDK for Go](https://cloud.google.com/appengine/docs/standard/go/download)
-        (Expand the "Previous App Engine SDK" header to see it)
 1.  Clone the ts-bridge source
     *   `go get github.com/google/ts-bridge/...`
     *   The ts-bridge source code should appear in
@@ -147,7 +144,7 @@ using a git repository and
         ts-bridge in a different Cloud region from the system itself to ensure
         independent failure domains.
 4.  Deploy app
-    *   `goapp deploy -application <your_project_name> -version live`
+    *   `gcloud app deploy --project <your_project_name> --version live`
 5.  Verify in the Stackdriver metrics explorer that metrics are being imported
     once a minute
 
