@@ -3,9 +3,14 @@ combiner: OR
 conditions:
 - conditionThreshold:
     comparison: COMPARISON_GT
-    duration: 0s
+    duration: 300s
     filter: metric.type="custom.googleapis.com/opencensus/ts_bridge/oldest_metric_age"
       AND resource.type="global"
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_MAX
+      crossSeriesReducer: REDUCE_MAX
+      groupByFields: ["resource.label.project_id"]
     thresholdValue: 1800000.0
     trigger:
       count: 1
@@ -14,6 +19,11 @@ conditions:
     duration: 1800s
     filter: metric.type="custom.googleapis.com/opencensus/ts_bridge/oldest_metric_age"
       AND resource.type="global"
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_MAX
+      crossSeriesReducer: REDUCE_MAX
+      groupByFields: ["resource.label.project_id"]
     trigger:
       count: 1
   displayName: No metrics reported by ts-bridge for 30 minutes.
