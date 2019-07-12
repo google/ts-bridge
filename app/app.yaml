@@ -1,5 +1,4 @@
-runtime: go
-api_version: go1
+runtime: go111
 
 env_variables:
   CONFIG_FILE: "metrics.yaml"
@@ -28,6 +27,6 @@ env_variables:
 
 handlers:
 - url: /
-  script: _go_app
+  script: auto
 - url: /(sync|cleanup)
-  script: _go_app
+  script: auto
