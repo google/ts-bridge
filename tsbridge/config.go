@@ -153,7 +153,6 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 		metrics[m.Name] = true
 	}
 
-	//log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
 	return c, nil
 }
 

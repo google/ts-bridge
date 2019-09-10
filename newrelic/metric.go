@@ -98,7 +98,6 @@ func (m *Metric) QueryMetrics(ctx context.Context, start time.Time, end time.Tim
 		// TODO: add multi-page support
 		url := fmt.Sprintf("%s/v2/applications/%v/metrics/data.json",
 			c.BaseUrl, c.ApplicationId)
-		//url := fmt.Sprintf("%s/v2/applications", c.BaseUrl)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			return nil, nil, err
