@@ -113,13 +113,19 @@ func (m *Metric) QueryMetrics(ctx context.Context, start time.Time, end time.Tim
 		req.Header.Set("X-Api-Key", c.APIKey)
 		httpClient := &http.Client{}
 		resp, err := httpClient.Do(req)
+		if err != nil {
+			return nil, nil, err
+		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		var bodydata responseData
 		err = json.Unmarshal(body, &bodydata)
 		if err != nil {
-			break
+			return nil, nil, err
 		}
 		ts := m.convertTimeSeries(ctx, bodydata, value)
 
