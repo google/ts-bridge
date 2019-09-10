@@ -1,0 +1,1 @@
+{"metric_data":{"from":"2019-08-29T22:12:54+00:00","to":"2019-08-30T01:12:54+00:00","metrics_not_found":[],"metrics_found":["HttpDispatcher"],"metrics":[{"name":"HttpDispatcher","timeslices":[{"from":"2019-08-29T22:11:00+00:00","to":"2019-08-29T22:12:00+00:00","values":{"total_call_time_per_minute":45.1}}]}]}}
