@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/google/ts-bridge/datadog"
+	"github.com/google/ts-bridge/newrelic"
 
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
 	validator "gopkg.in/validator.v2"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -36,6 +36,7 @@ var appIDFunc = appengine.AppID
 // Config is what the YAML configuration file gets deserialized to.
 type Config struct {
 	DatadogMetrics          []*DatadogMetricConfig `yaml:"datadog_metrics"`
+	NewRelicMetrics         []*NewRelicConfig      `yaml:"newrelic_metrics"`
 	StackdriverDestinations []*DestinationConfig   `yaml:"stackdriver_destinations"`
 
 	// internal list of metrics that gets populated when configuration file is read.
@@ -60,6 +61,12 @@ type SourceMetricConfig struct {
 type DatadogMetricConfig struct {
 	SourceMetricConfig   `yaml:"_,inline"`
 	datadog.MetricConfig `yaml:"_,inline"`
+}
+
+//NewRelicConfig combines common metrics configuration parameters with New Relic specific ones.
+type NewRelicConfig struct {
+	SourceMetricConfig    `yaml:"_,inline"`
+	newrelic.MetricConfig `yaml:"_,inline"`
 }
 
 // Metrics returns a list of metrics defined in the configuration file.
@@ -124,7 +131,29 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 		metrics[m.Name] = true
 	}
 
-	log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
+	for _, m := range c.NewRelicMetrics {
+		project, ok := destinations[m.Destination]
+		if !ok {
+			return nil, fmt.Errorf("destination '%s' not found", m.Destination)
+		}
+
+		source, err := newrelic.NewSourceMetric(m.Name, &m.MetricConfig)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create source metric '%s': %v", m.Name, err)
+		}
+
+		metric, err := NewMetric(ctx, m.Name, source, project)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create metric '%s': %v", m.Name, err)
+		}
+		c.metrics = append(c.metrics, metric)
+		if metrics[m.Name] {
+			return nil, fmt.Errorf("duplicate metric name '%s'", m.Name)
+		}
+		metrics[m.Name] = true
+	}
+
+	//log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
 	return c, nil
 }
 

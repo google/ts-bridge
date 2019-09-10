@@ -12,7 +12,7 @@ env_variables:
   UPDATE_TIMEOUT: "5m"
   # Name of the Stackdriver project that will be used to report internal ts-bridge metrics (import latencies,
   # metric age). If empty, the project hosting the ts-bridge App Engine app itself will be used.
-  SD_PROJECT_FOR_INTERNAL_METRICS: ""
+  SD_PROJECT_FOR_INTERNAL_METRICS: "jbfeldman-cre-playground"
   # Number of metrics to update in parallel. Must be between 1 and 100 (chosen arbitrarily).
   UPDATE_PARALLELISM: 1
   # Points received from Datadog that are too fresh will be discarded to allow data to be fully processed and aggregated

@@ -9,6 +9,14 @@ datadog_metrics:
     api_key: xxx
     application_key: xxx
     destination: another_stackdriver
+newrelic_metrics:
+  - name: total_call_time
+    metric_name: HttpDispatcher
+    metric_value: total_call_time_per_minute
+    api_key: xxx
+    application_id: xxx
+    destination: stackdriver
+
 stackdriver_destinations:
   - name: stackdriver
   - name: another_stackdriver
