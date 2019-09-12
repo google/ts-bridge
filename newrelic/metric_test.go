@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/ts-bridge/record"
 	"google.golang.org/appengine/aetest"
+	metricpb "google.golang.org/genproto/googleapis/api/metric"
 )
 
 var testCtx context.Context
@@ -82,12 +83,35 @@ func TestStackdriverDataErrors(t *testing.T) {
 		t.Error("expected an error when server returns 404")
 	}
 
+	// Test datapoint is at 2019-08-29 22:12:00
+	tStart, _ := time.Parse(time.RFC3339, "2019-08-29T22:11:00Z")
 	// A query needs to return a single time series.
 	handler.filename = "datapoint.json"
-	_, series, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.DatastoreMetricRecord{})
+	desc, series, err := m.StackdriverData(testCtx, tStart, &record.DatastoreMetricRecord{})
 	if err != nil {
 		t.Errorf("expected StackdriverData to return 1 timeseries with 1 data point, got error %v", err)
 	} else if len(series) != 1 || len(series[0].Points) != 1 {
 		t.Errorf("expected StackdriverData to receive 1 timeseries with 1 data point - received %d series.", len(series))
+	}
+
+	if desc.Name == "" || desc.Type == "" || desc.Description == "" {
+		t.Errorf("metric descriptor does not have all required fields")
+	}
+	if desc.MetricKind != metricpb.MetricDescriptor_GAUGE || desc.ValueType != metricpb.MetricDescriptor_DOUBLE {
+		t.Errorf("metric descriptor does not describe the right type of metric")
+	}
+
+	// Test datapoint is at 2019-08-29 22:12:00, we should not return it if the start time is after
+	tStart, _ = time.Parse(time.RFC3339, "2019-08-29T22:13:00Z")
+	_, series, _ = m.StackdriverData(testCtx, tStart, &record.DatastoreMetricRecord{})
+	if len(series) != 0 {
+		t.Errorf("returned a point that should have been filtered out due to being before start time")
+	}
+
+	// Test datapoint is at 2019-08-29 22:12:00, we should not return it if the start time matches
+	tStart, _ = time.Parse(time.RFC3339, "2019-08-29T22:12:00Z")
+	_, series, _ = m.StackdriverData(testCtx, tStart, &record.DatastoreMetricRecord{})
+	if len(series) != 0 {
+		t.Errorf("returned a point that should have been filtered out due to being equal to start time")
 	}
 }

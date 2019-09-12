@@ -183,7 +183,7 @@ func (m *Metric) convertTimeSeries(ctx context.Context, data responseData, value
 			log.Errorf(ctx, "unable to parse from time %v\n", slice.To)
 			continue
 		}
-		if toTime.Before(startTime) {
+		if toTime.Before(startTime) || toTime.Equal(startTime) {
 			log.Infof(ctx, "point %v is before specified start time of %v, sometimes New Relic does that.\n", toTime, startTime)
 			continue
 		}
