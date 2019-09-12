@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/ts-bridge/datadog"
 	"github.com/google/ts-bridge/newrelic"
+	"google.golang.org/appengine/log"
 
 	"google.golang.org/appengine"
 	validator "gopkg.in/validator.v2"
@@ -152,6 +153,8 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 		}
 		metrics[m.Name] = true
 	}
+
+	log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
 
 	return c, nil
 }

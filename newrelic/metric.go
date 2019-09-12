@@ -139,14 +139,12 @@ func (m *Metric) QueryMetrics(ctx context.Context, start time.Time, end time.Tim
 		if bodydata.Error.Title != "" {
 			return nil, nil, fmt.Errorf("error in response body: %s\n", bodydata.Error.Title)
 		}
-		ts := m.convertTimeSeries(ctx, bodydata, value)
+		ts := m.convertTimeSeries(ctx, bodydata, value, tmpStart)
 
 		if ret == nil || len(ret) == 0 {
 			ret = ts
 		} else {
-			if len(ts) > 0 {
-				ret[0].Points = append(ret[0].Points, ts[0].Points...)
-			}
+			ret = append(ret, ts...)
 		}
 
 		tmpStart = tmpEnd
@@ -162,7 +160,7 @@ func (m *Metric) QueryMetrics(ctx context.Context, start time.Time, end time.Tim
 	return descriptor, ret, nil
 }
 
-func (m *Metric) convertTimeSeries(ctx context.Context, data responseData, value string) []*monitoringpb.TimeSeries {
+func (m *Metric) convertTimeSeries(ctx context.Context, data responseData, value string, startTime time.Time) []*monitoringpb.TimeSeries {
 	var ts []*monitoringpb.TimeSeries
 
 	if len(data.MetricData.Metrics) == 0 {
@@ -183,6 +181,10 @@ func (m *Metric) convertTimeSeries(ctx context.Context, data responseData, value
 		toTime, err := time.Parse(time.RFC3339, slice.To)
 		if err != nil {
 			log.Errorf(ctx, "unable to parse from time %v\n", slice.To)
+			continue
+		}
+		if toTime.Before(startTime) {
+			log.Infof(ctx, "point %v is before specified start time of %v, sometimes New Relic does that.\n", toTime, startTime)
 			continue
 		}
 		toTimestamp, err := ptypes.TimestampProto(toTime)
