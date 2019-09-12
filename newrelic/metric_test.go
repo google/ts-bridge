@@ -17,7 +17,6 @@ package newrelic
 import (
 	"context"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -25,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/ts-bridge/record"
 	"google.golang.org/appengine/aetest"
 )
@@ -43,17 +41,6 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	done()
 	os.Exit(code)
-}
-
-// checks that `value` is close to `target` within `margin`.
-func timeWithin(value, target time.Time, margin time.Duration) bool {
-	return math.Abs(value.Sub(target).Seconds()) <= margin.Seconds()
-}
-
-func mustUnmarshalText(s string, pb proto.Message) {
-	if err := proto.UnmarshalText(s, pb); err != nil {
-		panic(err)
-	}
 }
 
 // fixtureHandler implements http.Handler
@@ -86,7 +73,7 @@ func makeTestServer(filename string) (*fixtureHandler, *httptest.Server) {
 func TestStackdriverDataErrors(t *testing.T) {
 	handler, server := makeTestServer("")
 	defer server.Close()
-	m, _ := NewSourceMetric("metricname", &MetricConfig{MetricName: "HttpDispatcher", MetricValue: "total_call_time_per_minute", ApplicationId: "1234"})
+	m, _ := NewSourceMetric("metricname", &MetricConfig{MetricData: MetricData{MetricName: "HttpDispatcher", MetricValue: "total_call_time_per_minute"}, EndpointBase: "https://api.newrelic.com", EndpointPath: "/v2/applications/1234567/metrics/data.json"})
 	m.client.BaseUrl = server.URL
 
 	// At this point HTTP server returns 404 to all requests, so we might as well test error handling.

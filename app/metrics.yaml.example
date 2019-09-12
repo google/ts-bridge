@@ -11,12 +11,14 @@ datadog_metrics:
     destination: another_stackdriver
 newrelic_metrics:
   - name: total_call_time
-    metric_name: HttpDispatcher
-    metric_value: total_call_time_per_minute
+    endpoint_base: "https://api.newrelic.com"
+    endpoint_path: "/v2/applications/{application_id}/metrics/data.json"
+    metric_data: {
+      metric_name: HttpDispatcher
+      metric_value: total_call_time_per_minute
+    }
     api_key: xxx
-    application_id: xxx
     destination: stackdriver
-
 stackdriver_destinations:
   - name: stackdriver
   - name: another_stackdriver

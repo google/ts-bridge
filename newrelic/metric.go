@@ -1,4 +1,4 @@
-// Copyright 2018 Google LLC
+// Copyright 2019 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,13 +31,17 @@ import (
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
+type MetricData struct {
+	MetricName  string `validate:"nonzero" yaml:"metric_name"`
+	MetricValue string `validate:"nonzero" yaml:"metric_value"`
+}
+
 // MetricConfig defines configuration file parameters for a specific metric imported from New Relic.
 type MetricConfig struct {
-	APIKey        string `yaml:"api_key" validate:"nonzero"`
-	ApplicationId string `yaml:"application_id" validate:"nonzero"`
-	MetricName    string `validate:"nonzero" yaml:"metric_name"`
-	MetricValue   string `validate:"nonzero" yaml:"metric_value"`
-	Cumulative    bool
+	APIKey       string     `yaml:"api_key" validate:"nonzero"`
+	MetricData   MetricData `yaml:"metric_data"`
+	EndpointBase string     `validate:"nonzero" yaml:"endpoint_base"`
+	EndpointPath string     `validate:"nonzero" yaml:"endpoint_path"`
 }
 
 // Metric defines a New Relic-based metric. It implements the SourceMetric interface.
@@ -63,20 +67,25 @@ type metricData struct {
 	MetricsFound    []string `json:"metrics_found,omitempty"`
 	Metrics         []data   `json:"metrics`
 }
+
+type errorData struct {
+	Title string
+}
+
 type responseData struct {
 	MetricData metricData `json:"metric_data"`
+	Error      errorData  `json:"error"`
 }
 
 // Client defines the information necessary to query New Relic
 type Client struct {
-	APIKey        string
-	ApplicationId string
-	BaseUrl       string
+	APIKey  string
+	BaseUrl string
 }
 
 // Query returns a unique name for the query
 func (m *Metric) Query() string {
-	return fmt.Sprintf("%v:%v", m.config.MetricName, m.config.MetricValue)
+	return fmt.Sprintf("%v:%v", m.config.MetricData.MetricName, m.config.MetricData.MetricValue)
 }
 
 // QueryMetrics returns a metric descriptor and a slice of TimeSeries for the metric.
@@ -96,8 +105,8 @@ func (m *Metric) QueryMetrics(ctx context.Context, start time.Time, end time.Tim
 		}
 
 		// TODO: add multi-page support
-		url := fmt.Sprintf("%s/v2/applications/%v/metrics/data.json",
-			c.BaseUrl, c.ApplicationId)
+		url := fmt.Sprintf("%s%s",
+			c.BaseUrl, m.config.EndpointPath)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			return nil, nil, err
@@ -126,6 +135,10 @@ func (m *Metric) QueryMetrics(ctx context.Context, start time.Time, end time.Tim
 		if err != nil {
 			return nil, nil, err
 		}
+
+		if bodydata.Error.Title != "" {
+			return nil, nil, fmt.Errorf("error in response body: %s\n", bodydata.Error.Title)
+		}
 		ts := m.convertTimeSeries(ctx, bodydata, value)
 
 		if ret == nil || len(ret) == 0 {
@@ -151,6 +164,10 @@ func (m *Metric) QueryMetrics(ctx context.Context, start time.Time, end time.Tim
 
 func (m *Metric) convertTimeSeries(ctx context.Context, data responseData, value string) []*monitoringpb.TimeSeries {
 	var ts []*monitoringpb.TimeSeries
+
+	if len(data.MetricData.Metrics) == 0 {
+		return nil
+	}
 
 	timeslices := data.MetricData.Metrics[0].Timeslices
 	if len(timeslices) == 0 {
@@ -180,7 +197,6 @@ func (m *Metric) convertTimeSeries(ctx context.Context, data responseData, value
 			ValueType:  metricpb.MetricDescriptor_DOUBLE,
 			Points: []*monitoringpb.Point{&monitoringpb.Point{
 				Interval: &monitoringpb.TimeInterval{
-					//StartTime: fromTimestamp,
 					EndTime: toTimestamp,
 				},
 				Value: &monitoringpb.TypedValue{
@@ -194,9 +210,8 @@ func (m *Metric) convertTimeSeries(ctx context.Context, data responseData, value
 // NewSourceMetric creates a new SourceMetric from a metric name and configuration parameters.
 func NewSourceMetric(name string, config *MetricConfig) (*Metric, error) {
 	client := Client{
-		APIKey:        config.APIKey,
-		ApplicationId: config.ApplicationId,
-		BaseUrl:       "https://api.newrelic.com",
+		APIKey:  config.APIKey,
+		BaseUrl: config.EndpointBase,
 	}
 	return &Metric{
 		Name:   name,
@@ -214,7 +229,7 @@ func (m *Metric) StackdriverName() string {
 // Time series data will include points after the given lastPoint timestamp.
 func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
 	log.Errorf(ctx, "lastPoint: %v\n", lastPoint)
-	desc, series, err := m.QueryMetrics(ctx, lastPoint, time.Now(), m.config.MetricName, m.config.MetricValue)
+	desc, series, err := m.QueryMetrics(ctx, lastPoint, time.Now(), m.config.MetricData.MetricName, m.config.MetricData.MetricValue)
 	if err != nil {
 		return nil, nil, err
 	}

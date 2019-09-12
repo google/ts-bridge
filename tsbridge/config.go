@@ -63,7 +63,7 @@ type DatadogMetricConfig struct {
 	datadog.MetricConfig `yaml:"_,inline"`
 }
 
-//NewRelicConfig combines common metrics configuration parameters with New Relic specific ones.
+// NewRelicConfig combines common metrics configuration parameters with New Relic specific ones.
 type NewRelicConfig struct {
 	SourceMetricConfig    `yaml:"_,inline"`
 	newrelic.MetricConfig `yaml:"_,inline"`
