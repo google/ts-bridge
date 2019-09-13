@@ -79,13 +79,15 @@ using a git repository and
         in the name of the project you just created into the
         stackdriver\_destinations section.
     *   Your `metrics.yaml` file should look like this:
-    ```
+
+```
     datadog_metrics:
-      stackdriver_destinations:
+    stackdriver_destinations:
       - name: stackdriver
         project_id: "your_project_name"
-    ```
-1.  Turn on the status page (uncomment #ENABLE\_STATUS\_PAGE: "yes" in
+```
+
+1.  Turn on the status page (uncomment `#ENABLE\_STATUS\_PAGE: "yes"` in
     `app.yaml`)
 1.  Update `SD_PROJECT_FOR_INTERNAL_METRICS` in your `app.yaml` to match the
     name of your GCP project.
@@ -113,7 +115,7 @@ using a git repository and
 
     *   Your `metrics.yaml` file should now look something like this:
 
-        ```
+```
 datadog_metrics:
   - name: your_first_metric_name
     query: "your metric query (copied from your Datadog dashboard)"
@@ -140,6 +142,7 @@ stackdriver_destinations:
   - name: stackdriver
     project_id: "your_project_name"
 ```
+
     *   see [below](#metrics-yaml-configuration) for configuration details
 
 1.  Test metric ingestion via localhost/sync
