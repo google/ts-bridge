@@ -113,7 +113,7 @@ using a git repository and
         *   [endpoint domain and path](https://docs.newrelic.com/docs/apis/rest-api-v2/getting-started/introduction-new-relic-rest-api-v2#appid)
         *   [metric name and metric value](https://rpm.newrelic.com/api/explore/applications/metric_data?application_id=296573398&account=2334394)
 
-    *   Your `metrics.yaml` file should now look something like the following. See [below](#metrics-yaml-configuration) for configuration details.
+    *   Your `metrics.yaml` file should now look something like the following. See [below](#metricsyaml-configuration) for configuration details.
 
 ```
 datadog_metrics:
