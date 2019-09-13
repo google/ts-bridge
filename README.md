@@ -1,6 +1,6 @@
 Time Series Bridge is a tool that can be used to import metrics from one
 monitoring system into another. It regularly runs a specific query against a
-source monitoring system (currently Datadog and New Relic) and writes new time
+source monitoring system (currently Datadog or New Relic) and writes new time
 series results into the destination system (currently only Stackdriver).
 
 ts-bridge is an App Engine Standard app written in Go.
@@ -78,9 +78,13 @@ using a git repository and
     *   Edit the yaml file, remove the datadog\_metrics sample content, and copy
         in the name of the project you just created into the
         stackdriver\_destinations section.
-    *   Your `metrics.yaml` file should look like this: `datadog_metrics:
-        stackdriver_destinations: - name: stackdriver project_id:
-        "your_project_name"`
+    *   Your `metrics.yaml` file should look like this:
+    ```
+    datadog_metrics:
+      stackdriver_destinations:
+      - name: stackdriver
+        project_id: "your_project_name"
+    ```
 1.  Turn on the status page (uncomment #ENABLE\_STATUS\_PAGE: "yes" in
     `app.yaml`)
 1.  Update `SD_PROJECT_FOR_INTERNAL_METRICS` in your `app.yaml` to match the
