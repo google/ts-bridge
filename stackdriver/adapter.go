@@ -116,7 +116,7 @@ func (a *Adapter) setDescriptor(ctx context.Context, project, name string, desc 
 	}
 	if current != nil {
 		// There's no way to update an existing metric descriptor, so we need to delete and then create a new one.
-		log.Infof(ctx, "Deleting existing metric descriptor: %v", current.Name)
+		log.Infof(ctx, "Deleting existing metric descriptor (%v) which is different from desired (%v)", current, desc)
 		err = a.c.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{Name: current.Name})
 		if err != nil {
 			return fmt.Errorf("DeleteMetricDescriptor error: %s", err)
