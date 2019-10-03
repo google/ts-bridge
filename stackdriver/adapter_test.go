@@ -106,10 +106,10 @@ func TestSetDescriptor(t *testing.T) {
 	}{
 		{"no descriptor exist", nil, nil, 0, nil, 1, nil, ""},
 		{"different descriptor exists",
-			&metricpb.MetricDescriptor{Type: "bar", Name: "projects/foo/metricDescriptors/bar", Description: "another metric"},
+			&metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_INT64, Type: "bar", Name: "projects/foo/metricDescriptors/bar", Description: "another metric"},
 			nil, 1, nil, 1, nil, ""},
-		{"same descriptor exists",
-			&metricpb.MetricDescriptor{Type: "bar", Name: "projects/foo/metricDescriptors/bar", Description: "my metric"},
+		{"similar descriptor exists",
+			&metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_DOUBLE, Type: "bar2", Name: "projects/foo/metricDescriptors/bar", Description: "my metric old"},
 			nil, 0, nil, 0, nil, ""},
 		{"error getting descriptor",
 			&metricpb.MetricDescriptor{}, fmt.Errorf("error1"), 0, nil, 0, nil, "error1"},
@@ -126,7 +126,7 @@ func TestSetDescriptor(t *testing.T) {
 			mock.EXPECT().CreateMetricDescriptor(gomock.Any(), gomock.Any()).Times(tt.createCalls).Return(&metricpb.MetricDescriptor{}, tt.createError)
 			a := &Adapter{mock, time.Hour}
 
-			err := a.setDescriptor(testCtx, "foo", "bar", &metricpb.MetricDescriptor{Type: "bar", Description: "my metric"})
+			err := a.setDescriptor(testCtx, "foo", "bar", &metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_DOUBLE, Type: "bar", Description: "my metric"})
 			if tt.wantError == "" && err != nil {
 				t.Errorf("setDescriptor() unexpected error: %v", err)
 			}
@@ -251,7 +251,7 @@ func TestCreateTimeseriesErrors(t *testing.T) {
 			mock.EXPECT().CreateTimeSeries(gomock.Any(), gomock.Any()).AnyTimes().Return(tt.createTSError)
 
 			a := &Adapter{mock, time.Hour}
-			err := a.CreateTimeseries(testCtx, "foo", "bar", &metricpb.MetricDescriptor{}, []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{}})
+			err := a.CreateTimeseries(testCtx, "foo", "bar", &metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_DOUBLE}, []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{}})
 			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("LatestTimestamp() expected error to contain '%s'; got %v", tt.wantErr, err)
 			}

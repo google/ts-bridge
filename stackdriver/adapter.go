@@ -23,7 +23,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/appengine/log"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
@@ -111,11 +110,13 @@ func (a *Adapter) setDescriptor(ctx context.Context, project, name string, desc 
 	if err != nil {
 		return fmt.Errorf("Error while getting descriptor for %s: %s", name, err)
 	}
-	if proto.Equal(current, desc) {
+	// Metric descriptors cannot be updated in-place, and deleting a descriptor requries the metric
+	// to not be used for alerts. This is why the descriptor is only deleted and recreated if absolutely
+	// necessary, i.e. when metric kind or value type is different.
+	if current.GetMetricKind() == desc.GetMetricKind() && current.GetValueType() == desc.GetValueType() {
 		return nil
 	}
 	if current != nil {
-		// There's no way to update an existing metric descriptor, so we need to delete and then create a new one.
 		log.Infof(ctx, "Deleting existing metric descriptor (%v) which is different from desired (%v)", current, desc)
 		err = a.c.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{Name: current.Name})
 		if err != nil {
