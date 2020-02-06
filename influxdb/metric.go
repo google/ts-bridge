@@ -18,21 +18,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
-	// "strconv"
 
 	"github.com/google/ts-bridge/record"
 
-	"google.golang.org/appengine/log"
-	// "github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/influxdata/influxdb1-client/models"
 	client "github.com/influxdata/influxdb1-client/v2"
+	"google.golang.org/appengine/log"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	"google.golang.org/genproto/googleapis/api/monitoredres"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
+// Metric defines a InfluxDB-based metric. It implements the SourceMetric
+// interface.
 type Metric struct {
 	Name                 string
 	config               *MetricConfig
@@ -40,6 +41,8 @@ type Metric struct {
 	counterResetInterval time.Duration
 }
 
+// MetricConfig defines the configuration file parameters for a sepcific metric
+// imported from InfluxDB.
 type MetricConfig struct {
 	Query    string
 	Database string
@@ -78,8 +81,10 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec r
 	defer c.Close()
 
 	// We query from [startTime, endTime), where startTime is the timestamp
-	// of ...
-	startTime := lastPoint.Add(time.Second)
+	// of the latest point plus a nanosecond offset as it is inclusive, and
+	// endTime is the current time with an offset back as points that are too
+	// fresh may contain incomplete data.
+	startTime := lastPoint.Add(time.Nanosecond)
 	endTime := time.Now().Add(-m.offsetDuration)
 
 	resp, err := c.Query(m.buildQuery(startTime, endTime))
@@ -110,19 +115,19 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec r
 	// query InfluxDB for new points, and points that are too fresh are ignored
 	// by applying an offset. We'll need to apply filtering once cumulative
 	// metrics come into play.
-	// return m.metricDescriptor(), m.convertTimeSeries(points), nil
-	fmt.Println(m.convertTimeSeries(points))
-	return nil, nil, nil
+	return m.metricDescriptor(), m.convertTimeSeries(points), nil
 }
 
+// buildQuery creates a InfluxDB query from the metric query definition,
+// wrapped in the given time-interval, inclusive of start time.
 func (m *Metric) buildQuery(startTime, endTime time.Time) client.Query {
-	// query := fmt.Sprintf(
-	// 	"SELECT * FROM (%s) WHERE time >= %s AND time < %s",
-	// 	m.config.Query,
-	// 	strconv.FormatInt(startTime.UnixNano(), 10),
-	// 	strconv.FormatInt(endTime.UnixNano(), 10))
+	query := fmt.Sprintf(
+		"SELECT * FROM (%s) WHERE time >= %s AND time < %s",
+		m.config.Query,
+		strconv.FormatInt(startTime.UnixNano(), 10),
+		strconv.FormatInt(endTime.UnixNano(), 10))
 
-	return client.NewQuery(m.config.Query+" LIMIT 5", m.config.Database, "ns")
+	return client.NewQuery(query, m.config.Database, "ns")
 }
 
 func (m *Metric) metricDescriptor() *metricpb.MetricDescriptor {
@@ -154,6 +159,8 @@ type point struct {
 	value     float64
 }
 
+// parseSeriePoints parses points from an InfluxDB series into a slice of
+// timestamp-value pairs.
 func parseSeriePoints(serie models.Row) ([]point, error) {
 	if len(serie.Columns) != 2 {
 		return nil, fmt.Errorf("Serie has columns %s, expected only 2 columns", serie.Columns)
@@ -176,7 +183,7 @@ func parseSeriePoints(serie models.Row) ([]point, error) {
 		if !ok {
 			return nil, fmt.Errorf("Failed to cast %v to json.Number", p[1])
 		}
-		// Since the column types are not specified, assume float64.
+		// Since the column types are not specified, we can only assume float64.
 		val, err := v.Float64()
 		if err != nil {
 			return nil, err
@@ -188,16 +195,10 @@ func parseSeriePoints(serie models.Row) ([]point, error) {
 	return points, nil
 }
 
-func (p *point) protoTimestamp() *timestamp.Timestamp {
-	unixNano := p.timestamp.UnixNano()
-
-	return &timestamp.Timestamp{
-		Seconds: unixNano / 1e9,
-		Nanos:   int32(unixNano % (unixNano / 1e9)),
-	}
-}
-
+// convertPoint converts a parsed InfluxDB point into a Stackdriver point.
 func (p *point) convertPoint() *monitoringpb.Point {
+	// For gauge metrics without time aggregations, we can treat the timestamps
+	// given by Influx as EndTime for the Stackdriver point.
 	return &monitoringpb.Point{
 		Interval: &monitoringpb.TimeInterval{
 			EndTime: p.protoTimestamp(),
@@ -207,5 +208,14 @@ func (p *point) convertPoint() *monitoringpb.Point {
 				DoubleValue: p.value,
 			},
 		},
+	}
+}
+
+func (p *point) protoTimestamp() *timestamp.Timestamp {
+	unixNano := p.timestamp.UnixNano()
+
+	return &timestamp.Timestamp{
+		Seconds: unixNano / 1e9,
+		Nanos:   int32(unixNano % (unixNano / 1e9)),
 	}
 }
