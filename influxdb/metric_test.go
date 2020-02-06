@@ -134,7 +134,9 @@ func TestStackdriverDataQuery(t *testing.T) {
 	// LastPoint set to 800000000000ns (800s).
 	lastPoint := time.Unix(0, 800000000000)
 
+	requestReceived := false
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestReceived = true
 		params := r.URL.Query()
 
 		db := getParam(params, "db")
@@ -164,6 +166,9 @@ func TestStackdriverDataQuery(t *testing.T) {
 	}
 	m, _ := NewSourceMetric("metricname", c, time.Second, time.Hour)
 	m.StackdriverData(testCtx, lastPoint, &record.DatastoreMetricRecord{})
+	if !requestReceived {
+		t.Fatalf("StackdriverData did not send InfluxDB request")
+	}
 }
 
 func TestStackdriverDataErrors(t *testing.T) {
