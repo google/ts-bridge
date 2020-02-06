@@ -32,6 +32,9 @@ import (
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
+// By passing around a time function, we can easily stub time in tests.
+var timeNow = time.Now
+
 // Metric defines a InfluxDB-based metric. It implements the SourceMetric
 // interface.
 type Metric struct {
@@ -68,14 +71,14 @@ func (m *Metric) Query() string {
 	return m.config.Query
 }
 
-func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
+func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, _ record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
 	c, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr:     m.config.Endpoint,
 		Username: m.config.Username,
 		Password: m.config.Password,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create InfluxDB client: %v", err)
+		return nil, nil, fmt.Errorf("failed to create InfluxDB client: %v", err)
 	}
 
 	defer c.Close()
@@ -85,7 +88,7 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec r
 	// endTime is the current time with an offset back as points that are too
 	// fresh may contain incomplete data.
 	startTime := lastPoint.Add(time.Nanosecond)
-	endTime := time.Now().Add(-m.offsetDuration)
+	endTime := timeNow().Add(-m.offsetDuration)
 
 	resp, err := c.Query(m.buildQuery(startTime, endTime))
 	if err != nil {
@@ -95,7 +98,7 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec r
 	}
 
 	if len(resp.Results) != 1 {
-		return nil, nil, fmt.Errorf("InfluxDB query '%s' returned %d query results, expected 1", m.config.Query)
+		return nil, nil, fmt.Errorf("InfluxDB query '%s' returned %d query results, expected 1", m.config.Query, len(resp.Results))
 	}
 
 	if len(resp.Results[0].Series) == 0 {
@@ -108,7 +111,7 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec r
 	serie := resp.Results[0].Series[0]
 	points, err := parseSeriePoints(serie)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse InfluxDB points: %v", err)
+		return nil, nil, fmt.Errorf("failed to parse InfluxDB points: %v", err)
 	}
 
 	// For gauge metrics, we don't need to apply any filtering since we only
@@ -135,8 +138,8 @@ func (m *Metric) metricDescriptor() *metricpb.MetricDescriptor {
 		Type:        m.StackdriverName(),
 		MetricKind:  metricpb.MetricDescriptor_GAUGE,
 		ValueType:   metricpb.MetricDescriptor_DOUBLE,
-		Description: fmt.Sprintf("InfluxDB query: %s", m.config.Query),
-		DisplayName: m.Name,
+		Description: fmt.Sprintf("InfluxDB query: %s", m.Name),
+		DisplayName: m.config.Query,
 	}
 }
 
@@ -163,16 +166,16 @@ type point struct {
 // timestamp-value pairs.
 func parseSeriePoints(serie models.Row) ([]point, error) {
 	if len(serie.Columns) != 2 {
-		return nil, fmt.Errorf("Serie has columns %s, expected only 2 columns", serie.Columns)
+		return nil, fmt.Errorf("serie has columns %s, expected only 2 columns", serie.Columns)
 	} else if serie.Columns[0] != "time" {
-		return nil, fmt.Errorf("Serie has first column '%s', expected 'time'", serie.Columns[0])
+		return nil, fmt.Errorf("serie has first column '%s', expected 'time'", serie.Columns[0])
 	}
 
 	var points []point
 	for _, p := range serie.Values {
 		t, ok := p[0].(json.Number)
 		if !ok {
-			return nil, fmt.Errorf("Failed to cast %v to json.Number", p[0])
+			return nil, fmt.Errorf("failed to cast %v to json.Number", p[0])
 		}
 		unixNano, err := t.Int64()
 		if err != nil {
@@ -181,7 +184,7 @@ func parseSeriePoints(serie models.Row) ([]point, error) {
 
 		v, ok := p[1].(json.Number)
 		if !ok {
-			return nil, fmt.Errorf("Failed to cast %v to json.Number", p[1])
+			return nil, fmt.Errorf("failed to cast %v to json.Number", p[1])
 		}
 		// Since the column types are not specified, we can only assume float64.
 		val, err := v.Float64()
