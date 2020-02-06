@@ -23,9 +23,10 @@ import (
 	"time"
 
 	"github.com/google/ts-bridge/datadog"
+	"github.com/google/ts-bridge/influxdb"
 
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	// "google.golang.org/appengine/log"
 	validator "gopkg.in/validator.v2"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -103,28 +104,43 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 		destinations[d.Name] = d.ProjectID
 	}
 
-	metrics := make(map[string]bool)
-	for _, m := range c.DatadogMetrics {
-		project, ok := destinations[m.Destination]
-		if !ok {
-			return nil, fmt.Errorf("destination '%s' not found", m.Destination)
-		}
-		source, err := datadog.NewSourceMetric(m.Name, &m.MetricConfig, opts.DatadogMinPointAge, opts.DatadogCounterResetInterval)
-		if err != nil {
-			return nil, fmt.Errorf("cannot create source metric '%s': %v", m.Name, err)
-		}
-		metric, err := NewMetric(ctx, m.Name, source, project)
-		if err != nil {
-			return nil, fmt.Errorf("cannot create metric '%s': %v", m.Name, err)
-		}
-		c.metrics = append(c.metrics, metric)
-		if metrics[m.Name] {
-			return nil, fmt.Errorf("duplicate metric name '%s'", m.Name)
-		}
-		metrics[m.Name] = true
+	// metrics := make(map[string]bool)
+	// for _, m := range c.DatadogMetrics {
+	// 	project, ok := destinations[m.Destination]
+	// 	if !ok {
+	// 		return nil, fmt.Errorf("destination '%s' not found", m.Destination)
+	// 	}
+	// 	source, err := datadog.NewSourceMetric(m.Name, &m.MetricConfig, opts.DatadogMinPointAge, opts.DatadogCounterResetInterval)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("cannot create source metric '%s': %v", m.Name, err)
+	// 	}
+	// 	metric, err := NewMetric(ctx, m.Name, source, project)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("cannot create metric '%s': %v", m.Name, err)
+	// 	}
+	// 	c.metrics = append(c.metrics, metric)
+	// 	if metrics[m.Name] {
+	// 		return nil, fmt.Errorf("duplicate metric name '%s'", m.Name)
+	// 	}
+	// 	metrics[m.Name] = true
+	// }
+
+	m, err := influxdb.NewSourceMetric("foo", &influxdb.MetricConfig{
+		Query:    "SELECT response_time FROM nginx_access_log",
+		Database: "telegraf",
+		Endpoint: "http://localhost:8086",
+	}, time.Second, time.Hour)
+	if err != nil {
+		return nil, err
 	}
 
-	log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
+	metric, err := NewMetric(ctx, m.Name, m, destinations["stackdriver"])
+	if err != nil {
+		return nil, err
+	}
+
+	c.metrics = append(c.metrics, metric)
+	// log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
 	return c, nil
 }
 
