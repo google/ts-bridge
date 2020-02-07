@@ -107,8 +107,8 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, _ rec
 		return nil, nil, fmt.Errorf("InfluxDB query '%s' returned %d time series", m.config.Query, len(resp.Results[0].Series))
 	}
 
-	serie := resp.Results[0].Series[0]
-	points, err := parseSeriePoints(serie)
+	series := resp.Results[0].Series[0]
+	points, err := parseSeriesPoints(series)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse InfluxDB points: %v", err)
 	}
@@ -171,17 +171,17 @@ type point struct {
 	value     float64
 }
 
-// parseSeriePoints parses points from an InfluxDB series into a slice of
+// parseSeriesPoints parses points from an InfluxDB series into a slice of
 // timestamp-value pairs.
-func parseSeriePoints(serie models.Row) ([]point, error) {
-	if len(serie.Columns) != 2 {
-		return nil, fmt.Errorf("serie has columns %s, expected only 2 columns", serie.Columns)
-	} else if serie.Columns[0] != "time" {
-		return nil, fmt.Errorf("serie has first column '%s', expected 'time'", serie.Columns[0])
+func parseSeriesPoints(series models.Row) ([]point, error) {
+	if len(series.Columns) != 2 {
+		return nil, fmt.Errorf("series has columns %s, expected only 2 columns", series.Columns)
+	} else if series.Columns[0] != "time" {
+		return nil, fmt.Errorf("series has first column '%s', expected 'time'", series.Columns[0])
 	}
 
 	var points []point
-	for _, p := range serie.Values {
+	for _, p := range series.Values {
 		t, ok := p[0].(json.Number)
 		if !ok {
 			return nil, fmt.Errorf("failed to cast %v to json.Number", p[0])
