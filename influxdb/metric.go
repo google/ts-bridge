@@ -210,10 +210,20 @@ func (m *Metric) convertPoint(p point) (*monitoringpb.Point, error) {
 		return nil, err
 	}
 
+	interval := &monitoringpb.TimeInterval{
+		EndTime: et,
+	}
+	if m.config.Cumulative {
+		st, err := ptypes.TimestampProto(startTime)
+		if err != nil {
+			return nil, err
+		}
+
+		interval.StartTime = st
+	}
+
 	return &monitoringpb.Point{
-		Interval: &monitoringpb.TimeInterval{
-			EndTime: et,
-		},
+		Interval: interval,
 		Value: &monitoringpb.TypedValue{
 			Value: &monitoringpb.TypedValue_DoubleValue{
 				DoubleValue: p.value,
