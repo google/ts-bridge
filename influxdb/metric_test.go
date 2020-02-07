@@ -358,7 +358,7 @@ func TestStackdriverDataTimeAggregatedGaugeResponse(t *testing.T) {
 		display_name: "SELECT MEAN(f) FROM foo GROUP BY time(10s)"
 	`
 
-	// With timestamps from (1010, 1020, 1030), we expect the just the
+	// With timestamps from (1010, 1020, 1030), we expect just the
 	// last one to be filtered out. While the first interval is incomplete,
 	// it won't ever catch up, so we take what we have.
 	expectedTSRaw := []string{

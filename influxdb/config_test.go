@@ -42,22 +42,27 @@ func TestParsingQueryInterval(t *testing.T) {
 			wantErr:     true,
 		},
 		{
-			description:  "correct converts seconds",
+			description:  "correctly converts seconds",
 			query:        "SELECT MEAN(bar) FROM foo GROUP BY time(10s)",
 			wantInterval: 10 * time.Second,
 		},
 		{
-			description:  "correct converts hours",
+			description:  "correctly converts minutes",
+			query:        "SELECT MEAN(bar) FROM foo GROUP BY time(7m)",
+			wantInterval: 7 * time.Minute,
+		},
+		{
+			description:  "correctly converts hours",
 			query:        "SELECT MEAN(bar) FROM foo GROUP BY time(2h)",
 			wantInterval: 2 * time.Hour,
 		},
 		{
-			description:  "correct converts days",
+			description:  "correctly converts days",
 			query:        "SELECT MEAN(bar) FROM foo GROUP BY time(1d)",
 			wantInterval: 24 * time.Hour,
 		},
 		{
-			description:  "correct converts weeks",
+			description:  "correctly converts weeks",
 			query:        "SELECT MEAN(bar) FROM foo GROUP BY time(3w)",
 			wantInterval: 24 * time.Hour * 7 * 3,
 		},
