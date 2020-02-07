@@ -18,12 +18,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/google/ts-bridge/record"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/influxdata/influxdb1-client/models"
 	client "github.com/influxdata/influxdb1-client/v2"
 	"google.golang.org/appengine/log"
@@ -118,17 +117,22 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, _ rec
 	// query InfluxDB for new points, and points that are too fresh are ignored
 	// by applying an offset. We'll need to apply filtering once cumulative
 	// metrics come into play.
-	return m.metricDescriptor(), m.convertTimeSeries(points), nil
+	timeSeries, err := m.convertTimeSeries(points)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert InfluxDB points %v to time series: %v", points, err)
+	}
+
+	return m.metricDescriptor(), timeSeries, nil
 }
 
 // buildQuery creates a InfluxDB query from the metric query definition,
 // wrapped in the given time-interval, inclusive of start time.
 func (m *Metric) buildQuery(startTime, endTime time.Time) client.Query {
 	query := fmt.Sprintf(
-		"SELECT * FROM (%s) WHERE time >= %s AND time < %s",
+		"SELECT * FROM (%s) WHERE time >= %d AND time < %d",
 		m.config.Query,
-		strconv.FormatInt(startTime.UnixNano(), 10),
-		strconv.FormatInt(endTime.UnixNano(), 10))
+		startTime.UnixNano(),
+		endTime.UnixNano())
 
 	return client.NewQuery(query, m.config.Database, "ns")
 }
@@ -143,18 +147,23 @@ func (m *Metric) metricDescriptor() *metricpb.MetricDescriptor {
 	}
 }
 
-func (m *Metric) convertTimeSeries(points []point) []*monitoringpb.TimeSeries {
+func (m *Metric) convertTimeSeries(points []point) ([]*monitoringpb.TimeSeries, error) {
 	ts := make([]*monitoringpb.TimeSeries, 0, len(points))
 	for _, p := range points {
+		newP, err := p.convertPoint()
+		if err != nil {
+			return nil, err
+		}
+
 		ts = append(ts, &monitoringpb.TimeSeries{
 			Metric:     &metricpb.Metric{Type: m.StackdriverName()},
 			Resource:   &monitoredres.MonitoredResource{Type: "global"},
 			MetricKind: metricpb.MetricDescriptor_GAUGE,
 			ValueType:  metricpb.MetricDescriptor_DOUBLE,
-			Points:     []*monitoringpb.Point{p.convertPoint()},
+			Points:     []*monitoringpb.Point{newP},
 		})
 	}
-	return ts
+	return ts, nil
 }
 
 type point struct {
@@ -199,26 +208,22 @@ func parseSeriePoints(serie models.Row) ([]point, error) {
 }
 
 // convertPoint converts a parsed InfluxDB point into a Stackdriver point.
-func (p *point) convertPoint() *monitoringpb.Point {
+func (p *point) convertPoint() (*monitoringpb.Point, error) {
 	// For gauge metrics without time aggregations, we can treat the timestamps
 	// given by Influx as EndTime for the Stackdriver point.
+	et, err := ptypes.TimestampProto(p.timestamp)
+	if err != nil {
+		return nil, err
+	}
+
 	return &monitoringpb.Point{
 		Interval: &monitoringpb.TimeInterval{
-			EndTime: p.protoTimestamp(),
+			EndTime: et,
 		},
 		Value: &monitoringpb.TypedValue{
 			Value: &monitoringpb.TypedValue_DoubleValue{
 				DoubleValue: p.value,
 			},
 		},
-	}
-}
-
-func (p *point) protoTimestamp() *timestamp.Timestamp {
-	unixNano := p.timestamp.UnixNano()
-
-	return &timestamp.Timestamp{
-		Seconds: unixNano / 1e9,
-		Nanos:   int32(unixNano % (unixNano / 1e9)),
-	}
+	}, nil
 }
