@@ -1,0 +1,44 @@
+{
+    "results": [
+        {
+            "statement_id": 0,
+            "series": [
+                {
+                    "name": "foo",
+                    "columns": [
+                        "time",
+                        "myfield"
+                    ],
+                    "values": [
+                        [
+                            1579802400000000000,
+                            33.1
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "statement_id": 1,
+            "series": [
+                {
+                    "name": "bar",
+                    "columns": [
+                        "time",
+                        "myfield"
+                    ],
+                    "values": [
+                        [
+                            1579802400000000000,
+                            33.1
+                        ],
+                        [
+                            1579802600000000000,
+                            12.4
+                        ]
+                    ]
+                }
+            ]
+        }
+    ]
+}

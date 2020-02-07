@@ -121,6 +121,18 @@
   version = "v2.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:00e5ad58045d6d2a6c9e65d1809ff2594bc396e911712ae892a93976fdece115"
+  name = "github.com/influxdata/influxdb1-client"
+  packages = [
+    "models",
+    "pkg/escape",
+    "v2",
+  ]
+  pruneopts = "UT"
+  revision = "8bf82d3c094dc06be9da8e5bf9d3589b6ea032ae"
+
+[[projects]]
   digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -353,6 +365,8 @@
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/influxdata/influxdb1-client/models",
+    "github.com/influxdata/influxdb1-client/v2",
     "github.com/zorkian/go-datadog-api",
     "go.opencensus.io/stats",
     "go.opencensus.io/stats/view",
