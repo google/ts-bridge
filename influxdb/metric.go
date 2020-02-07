@@ -43,17 +43,11 @@ type Metric struct {
 	counterResetInterval time.Duration
 }
 
-// MetricConfig defines the configuration file parameters for a sepcific metric
-// imported from InfluxDB.
-type MetricConfig struct {
-	Query    string
-	Database string
-	Endpoint string
-	Username string
-	Password string
-}
-
 func NewSourceMetric(name string, config *MetricConfig, offsetDuration, counterResetInterval time.Duration) (*Metric, error) {
+	if err := config.validateQuery(); err != nil {
+		return nil, err
+	}
+
 	return &Metric{
 		Name:                 name,
 		config:               config,
@@ -83,12 +77,15 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, _ rec
 	defer c.Close()
 
 	// We query from [startTime, endTime), where startTime is the timestamp
-	// of the latest point plus a nanosecond offset as it is inclusive, and
-	// endTime is the current time with an offset back as points that are too
-	// fresh may contain incomplete data.
-	startTime := lastPoint.Add(time.Nanosecond)
+	// of the latest point, and endTime is the current time with an offset back
+	// as points that are too fresh may contain incomplete data.
+	startTime := lastPoint
+	if !m.config.TimeAggregated {
+		// Add a nanosecond offset as for non-time aggregated points, InfluxQL
+		// timestamps are inclusive.
+		startTime = startTime.Add(time.Nanosecond)
+	}
 	endTime := timeNow().Add(-m.offsetDuration)
-
 	resp, err := c.Query(m.buildQuery(startTime, endTime))
 	if err != nil {
 		return nil, nil, err
@@ -113,10 +110,11 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, _ rec
 		return nil, nil, fmt.Errorf("failed to parse InfluxDB points: %v", err)
 	}
 
-	// For gauge metrics, we don't need to apply any filtering since we only
-	// query InfluxDB for new points, and points that are too fresh are ignored
-	// by applying an offset. We'll need to apply filtering once cumulative
-	// metrics come into play.
+	points, err = m.filterPoints(points, endTime)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to filter InfluxDB points: %v", err)
+	}
+
 	timeSeries, err := m.convertTimeSeries(points)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert InfluxDB points %v to time series: %v", points, err)
@@ -147,10 +145,46 @@ func (m *Metric) metricDescriptor() *metricpb.MetricDescriptor {
 	}
 }
 
+func (m *Metric) filterPoints(points []point, endTime time.Time) ([]point, error) {
+	if !m.config.TimeAggregated {
+		// For non-time-aggregated gauge metrics, we don't need to apply any
+		// filtering since we only query InfluxDB for new points, and points
+		// that are too fresh are ignored by applying an offset.
+		return points, nil
+	}
+
+	queryInterval, err := m.config.queryInterval()
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredPoints []point
+	for _, p := range points {
+		// Once cumulative metrics come in play, we'll filter using lastPoint.
+		// For now we can rely on our constructed query to only fetch the
+		// latest points.
+
+		// For time-aggregated InfluxQL queries with interval i, Influx returns
+		// points with timestamp x, denoting the aggregated value from time
+		// [i, i + x).
+		intervalEnd := p.timestamp.Add(queryInterval)
+
+		// If this time interval hasn't finished accumulating data, wait for
+		// it to complete next time around.
+		if intervalEnd.UnixNano() > endTime.UnixNano() {
+			continue
+		}
+
+		filteredPoints = append(filteredPoints, p)
+	}
+
+	return filteredPoints, nil
+}
+
 func (m *Metric) convertTimeSeries(points []point) ([]*monitoringpb.TimeSeries, error) {
 	ts := make([]*monitoringpb.TimeSeries, 0, len(points))
 	for _, p := range points {
-		newP, err := p.convertPoint()
+		newP, err := m.convertPoint(p)
 		if err != nil {
 			return nil, err
 		}
@@ -164,6 +198,37 @@ func (m *Metric) convertTimeSeries(points []point) ([]*monitoringpb.TimeSeries, 
 		})
 	}
 	return ts, nil
+}
+
+// convertPoint converts a parsed InfluxDB point into a Stackdriver point.
+func (m *Metric) convertPoint(p point) (*monitoringpb.Point, error) {
+	// For gauge metrics without time aggregations, we can treat the timestamps
+	// given by Influx as EndTime for the Stackdriver point.
+	et := p.timestamp
+	if m.config.TimeAggregated {
+		interval, err := m.config.queryInterval()
+		if err != nil {
+			return nil, err
+		}
+
+		et = et.Add(interval)
+	}
+
+	etPb, err := ptypes.TimestampProto(et)
+	if err != nil {
+		return nil, err
+	}
+
+	return &monitoringpb.Point{
+		Interval: &monitoringpb.TimeInterval{
+			EndTime: etPb,
+		},
+		Value: &monitoringpb.TypedValue{
+			Value: &monitoringpb.TypedValue_DoubleValue{
+				DoubleValue: p.value,
+			},
+		},
+	}, nil
 }
 
 type point struct {
@@ -205,25 +270,4 @@ func parseSeriesPoints(series models.Row) ([]point, error) {
 	}
 
 	return points, nil
-}
-
-// convertPoint converts a parsed InfluxDB point into a Stackdriver point.
-func (p *point) convertPoint() (*monitoringpb.Point, error) {
-	// For gauge metrics without time aggregations, we can treat the timestamps
-	// given by Influx as EndTime for the Stackdriver point.
-	et, err := ptypes.TimestampProto(p.timestamp)
-	if err != nil {
-		return nil, err
-	}
-
-	return &monitoringpb.Point{
-		Interval: &monitoringpb.TimeInterval{
-			EndTime: et,
-		},
-		Value: &monitoringpb.TypedValue{
-			Value: &monitoringpb.TypedValue_DoubleValue{
-				DoubleValue: p.value,
-			},
-		},
-	}, nil
 }

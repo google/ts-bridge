@@ -128,46 +128,64 @@ func getParam(params url.Values, key string) string {
 }
 
 func TestStackdriverDataQuery(t *testing.T) {
-	// Stubs time.Now() in InfluxDB metrics to be 1000000000000ns (1000s).
-	now := time.Unix(0, 1000000000000)
+	now := time.Unix(0, 1000000000000) // (1000s)
 	timeNow = func() time.Time { return now }
-	// LastPoint set to 800000000000ns (800s).
-	lastPoint := time.Unix(0, 800000000000)
+	lastPoint := time.Unix(0, 800000000000) // (800s)
 
-	requestReceived := false
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestReceived = true
-		params := r.URL.Query()
+	for _, tt := range []struct {
+		description string
+		config      *MetricConfig
+		wantQuery   string
+	}{
+		{
+			description: "correct gauge metric query",
+			config: &MetricConfig{
+				Query:    "foo",
+				Database: "bar",
+			},
+			wantQuery: "SELECT * FROM (foo) WHERE time >= 800000000001 AND time < 999000000000",
+		},
+		{
+			description: "correct time aggregated gauge metric query",
+			config: &MetricConfig{
+				Query:          "SELECT MEAN(f) FROM foo GROUP BY time(10s)",
+				Database:       "bar",
+				TimeAggregated: true,
+			},
+			wantQuery: "SELECT * FROM (SELECT MEAN(f) FROM foo GROUP BY time(10s)) WHERE time >= 800000000000 AND time < 999000000000",
+		},
+	} {
+		t.Run(tt.description, func(t *testing.T) {
+			requestHandled := false
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				params := r.URL.Query()
 
-		db := getParam(params, "db")
-		if db != "bar" {
-			t.Errorf("expected db=bar to be passed in query; got db=%s", db)
-		}
+				db := getParam(params, "db")
+				if db != "bar" {
+					t.Errorf("expected db=bar to be passed in query; got db=%s", db)
+				}
 
-		epoch := getParam(params, "epoch")
-		if epoch != "ns" {
-			t.Errorf("expected epoch=ns to be passed in query; got epoch=%s", epoch)
-		}
+				epoch := getParam(params, "epoch")
+				if epoch != "ns" {
+					t.Errorf("expected epoch=ns to be passed in query; got epoch=%s", epoch)
+				}
 
-		q := getParam(params, "q")
-		// Constructed query should increment start time by 1ns, and set end
-		// time to be time.Now() - offsetDuration (1s in this test).
-		expectedQuery := "SELECT * FROM (foo) WHERE time >= 800000000001 AND time < 999000000000"
-		if q != expectedQuery {
-			t.Errorf("expected q=%s to be passed in query; got q=%s", expectedQuery, q)
-		}
-	}))
-	defer testServer.Close()
+				q := getParam(params, "q")
+				if q != tt.wantQuery {
+					t.Errorf("expected q=%s to be passed in query; got q=%s", tt.wantQuery, q)
+				}
 
-	c := &MetricConfig{
-		Query:    "foo",
-		Database: "bar",
-		Endpoint: testServer.URL,
-	}
-	m, _ := NewSourceMetric("metricname", c, time.Second, time.Hour)
-	m.StackdriverData(testCtx, lastPoint, &record.DatastoreMetricRecord{})
-	if !requestReceived {
-		t.Fatalf("StackdriverData did not send InfluxDB request")
+				requestHandled = true
+			}))
+			defer server.Close()
+
+			tt.config.Endpoint = server.URL
+			m, _ := NewSourceMetric("metricname", tt.config, time.Second, time.Hour)
+			m.StackdriverData(testCtx, lastPoint, &record.DatastoreMetricRecord{})
+			if !requestHandled {
+				t.Fatalf("StackdriverData did not send InfluxDB request")
+			}
+		})
 	}
 }
 
@@ -250,6 +268,8 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 		Endpoint: server.URL,
 	}
 	m, _ := NewSourceMetric("metricname", c, time.Second, time.Hour)
+	// The lastTime time passed here is irrelevant, as we stubbed what the
+	// query returns.
 	desc, ts, err := m.StackdriverData(testCtx, time.Now(), &record.DatastoreMetricRecord{})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
@@ -285,6 +305,85 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 					end_time: < seconds: 1579803000 nanos: 0 >
 				>
 				value: < double_value: 48.8 >
+			>
+		`,
+	}
+
+	expectedDesc, expectedTS := mustUnmarshalTimeSeries(expectedDescRaw, expectedTSRaw...)
+	if !proto.Equal(desc, expectedDesc) {
+		t.Errorf("expected descriptor %v; got %v", expectedDesc, desc)
+	}
+
+	if len(ts) != len(expectedTS) {
+		t.Fatalf("expected %d time series; got %d", len(expectedTS), len(ts))
+	}
+
+	for i, p := range ts {
+		if !proto.Equal(p, expectedTS[i]) {
+			t.Errorf("expected time series %v; got %v", expectedTS[i], p)
+		}
+	}
+}
+
+func TestStackdriverDataTimeAggregatedGaugeResponse(t *testing.T) {
+	_, server := makeTestServer("good_timeagg_gauge.json")
+	defer server.Close()
+
+	c := &MetricConfig{
+		Query:          "SELECT MEAN(f) FROM foo GROUP BY time(10s)",
+		Endpoint:       server.URL,
+		TimeAggregated: true,
+	}
+	m, err := NewSourceMetric("metricname", c, time.Second, 0)
+	if err != nil {
+		t.Fatalf("failed to create metric with config %v: %v", c, err)
+	}
+
+	// With offsetDuration set to 0, this will be the endTime used in the
+	// Influx query.
+	now := time.Unix(0, 1035000000000) // (1035s)
+	timeNow = func() time.Time { return now }
+
+	lastPoint := time.Unix(0, 1015000000000) // (1015s)
+	desc, ts, err := m.StackdriverData(testCtx, lastPoint, &record.DatastoreMetricRecord{})
+	if err != nil {
+		t.Fatalf("unexpected StackdriverData error: %v", err)
+	}
+
+	expectedDescRaw := `
+		type: "custom.googleapis.com/influxdb/metricname"
+		metric_kind: GAUGE
+		value_type: DOUBLE
+		description: "InfluxDB query: metricname"
+		display_name: "SELECT MEAN(f) FROM foo GROUP BY time(10s)"
+	`
+
+	// With timestamps from (1010, 1020, 1030), we expect the just the
+	// last one to be filtered out. While the first interval is incomplete,
+	// it won't ever catch up, so we take what we have.
+	expectedTSRaw := []string{
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: GAUGE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					end_time: < seconds: 1020 nanos: 0 >
+				>
+				value: < double_value: 48.8 >
+			>
+		`,
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: GAUGE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					end_time: < seconds: 1030 nanos: 0 >
+				>
+				value: < double_value: 59.4 >
 			>
 		`,
 	}
