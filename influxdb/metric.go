@@ -67,8 +67,8 @@ func (m *Metric) Query() string {
 func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, _ record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
 	c, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr:     m.config.Endpoint,
-		Username: m.config.Username,
-		Password: m.config.Password,
+		Username: m.config.Auth.Username,
+		Password: m.config.Auth.Password,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create InfluxDB client: %v", err)

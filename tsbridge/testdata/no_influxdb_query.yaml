@@ -1,0 +1,9 @@
+influxdb_metrics:
+  - name: metric
+    database: db
+    endpoint: localhost:8888
+    destination: stackdriver
+stackdriver_destinations:
+  - name: stackdriver
+  - name: another_stackdriver
+    project_id: "another-projectname"

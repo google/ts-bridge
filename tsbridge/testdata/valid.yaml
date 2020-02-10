@@ -9,6 +9,20 @@ datadog_metrics:
     api_key: yyy
     application_key: yyy
     destination: another_stackdriver
+influxdb_metrics:
+  - name: metric3
+    query: "query three"
+    database: db
+    endpoint: localhost:8888
+    destination: stackdriver
+  - name: metric4
+    query: "query four"
+    database: db
+    endpoint: localhost:8888
+    auth:
+      username: user
+      password: 1234
+    destination: stackdriver
 stackdriver_destinations:
   - name: stackdriver
   - name: another_stackdriver

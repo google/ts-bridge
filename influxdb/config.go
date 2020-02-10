@@ -24,11 +24,13 @@ import (
 // MetricConfig defines the configuration file parameters for a sepcific metric
 // imported from InfluxDB.
 type MetricConfig struct {
-	Query          string
-	Database       string
-	Endpoint       string
-	Username       string
-	Password       string
+	Query    string `validate:"nonzero"`
+	Database string `validate:"nonzero"`
+	Endpoint string `validate:"nonzero"`
+	Auth     struct {
+		Username string
+		Password string
+	}
 	TimeAggregated bool
 }
 
