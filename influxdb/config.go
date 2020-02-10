@@ -49,12 +49,12 @@ func (c *MetricConfig) queryInterval() (time.Duration, error) {
 	}
 
 	if len(query.Statements) != 1 {
-		return 0, fmt.Errorf("expected only 1 query statement, got %d", len(query.Statements))
+		return 0, fmt.Errorf("expected 1 query statement, got %d", len(query.Statements))
 	}
 
 	selectStatement, ok := query.Statements[0].(*influxql.SelectStatement)
 	if !ok {
-		return 0, fmt.Errorf("failed to cast InfluxQL query statement to InfluxQL select statement")
+		return 0, fmt.Errorf("failed to cast InfluxQL Statement to InfluxQL SelectStatement")
 	}
 
 	interval, err := selectStatement.GroupByInterval()
