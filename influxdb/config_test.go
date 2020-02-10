@@ -32,11 +32,6 @@ func TestParsingQueryInterval(t *testing.T) {
 			wantErr:     true,
 		},
 		{
-			description: "error when multiple time intervals",
-			query:       "SELECT MEAN(bar) FROM foo GROUP BY time(1s), time(2s)",
-			wantErr:     true,
-		},
-		{
 			description: "error when no unit",
 			query:       "SELECT MEAN(bar) FROM foo GROUP BY time(100)",
 			wantErr:     true,
@@ -82,7 +77,7 @@ func TestParsingQueryInterval(t *testing.T) {
 			}
 
 			if i != tt.wantInterval {
-				t.Fatalf("expected interval %v, got %v", tt.wantInterval, i)
+				t.Errorf("expected interval %v, got %v", tt.wantInterval, i)
 			}
 		})
 	}

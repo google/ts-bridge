@@ -175,6 +175,9 @@ func (m *Metric) filterPoints(points []point, endTime time.Time) ([]point, error
 			continue
 		}
 
+		// Update the timestamp on the point as this will be used as the
+		// end timestamp in the corresponding Stackdriver time series.
+		p.timestamp = intervalEnd
 		filteredPoints = append(filteredPoints, p)
 	}
 
@@ -202,26 +205,14 @@ func (m *Metric) convertTimeSeries(points []point) ([]*monitoringpb.TimeSeries, 
 
 // convertPoint converts a parsed InfluxDB point into a Stackdriver point.
 func (m *Metric) convertPoint(p point) (*monitoringpb.Point, error) {
-	// For gauge metrics without time aggregations, we can treat the timestamps
-	// given by Influx as EndTime for the Stackdriver point.
-	et := p.timestamp
-	if m.config.TimeAggregated {
-		interval, err := m.config.queryInterval()
-		if err != nil {
-			return nil, err
-		}
-
-		et = et.Add(interval)
-	}
-
-	etPb, err := ptypes.TimestampProto(et)
+	et, err := ptypes.TimestampProto(p.timestamp)
 	if err != nil {
 		return nil, err
 	}
 
 	return &monitoringpb.Point{
 		Interval: &monitoringpb.TimeInterval{
-			EndTime: etPb,
+			EndTime: et,
 		},
 		Value: &monitoringpb.TypedValue{
 			Value: &monitoringpb.TypedValue_DoubleValue{

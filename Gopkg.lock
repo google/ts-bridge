@@ -87,6 +87,14 @@
   version = "v1.38.1"
 
 [[projects]]
+  digest = "1:4caab6f14c6b9654ccb7d398791d1f71a2d4e693ea508d29659a173e1b2e644a"
+  name = "github.com/gogo/protobuf"
+  packages = ["proto"]
+  pruneopts = "UT"
+  revision = "5628607bb4c51c3157aacc3a50f0ab707582b805"
+  version = "v1.3.1"
+
+[[projects]]
   digest = "1:be408f349cae090a7c17a279633d6e62b00068e64af66a582cae0983de8890ea"
   name = "github.com/golang/mock"
   packages = ["gomock"]
@@ -131,6 +139,17 @@
   ]
   pruneopts = "UT"
   revision = "8bf82d3c094dc06be9da8e5bf9d3589b6ea032ae"
+
+[[projects]]
+  digest = "1:a56e8bb5d96771d927b51963554589937d280877671482b45529e14c3e45f39b"
+  name = "github.com/influxdata/influxql"
+  packages = [
+    ".",
+    "internal",
+  ]
+  pruneopts = "UT"
+  revision = "57f403b00b124eb900835c0c944e9b60d848db5e"
+  version = "v1.0.1"
 
 [[projects]]
   digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
@@ -367,6 +386,7 @@
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/influxdata/influxdb1-client/models",
     "github.com/influxdata/influxdb1-client/v2",
+    "github.com/influxdata/influxql",
     "github.com/zorkian/go-datadog-api",
     "go.opencensus.io/stats",
     "go.opencensus.io/stats/view",

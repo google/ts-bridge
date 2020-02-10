@@ -16,9 +16,9 @@ package influxdb
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
 	"time"
+
+	"github.com/influxdata/influxql"
 )
 
 // MetricConfig defines the configuration file parameters for a sepcific metric
@@ -43,38 +43,26 @@ func (c *MetricConfig) validateQuery() error {
 }
 
 func (c *MetricConfig) queryInterval() (time.Duration, error) {
-	// Case-insensitive match of time(<numeric duration><unit>) in an InfluxQL
-	// query, which captures the numberic duration and unit seperately.
-	re := regexp.MustCompile(`(?i)time\(([0-9]+)([uµsmhdw]|ns|ms)\)`)
-	matches := re.FindAllStringSubmatch(c.Query, -1)
-
-	if len(matches) != 1 {
-		return 0, fmt.Errorf("query %s has %d time groupings, expected 1", c.Query, len(matches))
-	}
-	if len(matches[0]) != 3 {
-		return 0, fmt.Errorf("query %s expected {match} {magnitude} {unit} match, got %v", c.Query, matches[0])
+	query, err := influxql.ParseQuery(c.Query)
+	if err != nil {
+		return 0, err
 	}
 
-	return parseDuration(matches[0][1], matches[0][2])
-}
-
-func parseDuration(val, unit string) (time.Duration, error) {
-	// Convert the InfluxQL time units into something Golang can understand.
-	if unit == "u" || unit == "µ" {
-		unit = "us"
-	} else if unit == "d" || unit == "w" {
-		v, err := strconv.Atoi(val)
-		if err != nil {
-			return 0, fmt.Errorf("failed to parse %s to int", val)
-		}
-
-		v = v * 24
-		if unit == "w" {
-			v = v * 7
-		}
-
-		val, unit = strconv.Itoa(v), "h"
+	if len(query.Statements) != 1 {
+		return 0, fmt.Errorf("expected only 1 query statement, got %d", len(query.Statements))
 	}
 
-	return time.ParseDuration(val + unit)
+	selectStatement, ok := query.Statements[0].(*influxql.SelectStatement)
+	if !ok {
+		return 0, fmt.Errorf("failed to cast InfluxQL query statement to InfluxQL select statement")
+	}
+
+	interval, err := selectStatement.GroupByInterval()
+	if err != nil {
+		return 0, err
+	} else if interval <= 0 {
+		return 0, fmt.Errorf("expected interval to be greater than 0, got %v", interval)
+	}
+
+	return interval, nil
 }
