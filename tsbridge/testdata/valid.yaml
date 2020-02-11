@@ -23,6 +23,8 @@ influxdb_metrics:
       username: user
       password: 1234
     destination: stackdriver
+    time_aggregated: false
+    cumulative: false
 stackdriver_destinations:
   - name: stackdriver
   - name: another_stackdriver

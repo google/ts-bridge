@@ -31,7 +31,7 @@ type MetricConfig struct {
 		Username string
 		Password string
 	}
-	TimeAggregated bool
+	TimeAggregated bool `yaml:"time_aggregated"`
 	Cumulative     bool
 }
 
