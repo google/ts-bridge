@@ -32,6 +32,7 @@ type MetricConfig struct {
 		Password string
 	}
 	TimeAggregated bool
+	Cumulative     bool
 }
 
 func (c *MetricConfig) validateQuery() error {
