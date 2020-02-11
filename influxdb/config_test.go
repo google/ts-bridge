@@ -19,6 +19,70 @@ import (
 	"time"
 )
 
+func TestQueryValidation(t *testing.T) {
+	for _, tt := range []struct {
+		description string
+		config      *MetricConfig
+		wantErr     bool
+	}{
+		{
+			description: "ok for valid gauge metrics",
+			config: &MetricConfig{
+				Query: "SELECT * FROM foo",
+			},
+		},
+		{
+			description: "ok for valid time aggregated gauge metrics",
+			config: &MetricConfig{
+				Query:          "SELECT * FROM foo GROUP BY time(1s)",
+				TimeAggregated: true,
+			},
+		},
+		{
+			description: "ok for valid cumulative metrics",
+			config: &MetricConfig{
+				Query:      "SELECT CUMULATIVE_SUM(bar) FROM foo",
+				Cumulative: true,
+			},
+		},
+		{
+			description: "ok for valid cumulative, time aggregated metrics",
+			config: &MetricConfig{
+				Query:          "SELECT CUMULATIVE_SUM(bar) FROM foo GROUP BY time(1s)",
+				TimeAggregated: true,
+				Cumulative:     true,
+			},
+		},
+		{
+			description: "error when time aggregated queries don't have group by interval",
+			config: &MetricConfig{
+				Query:          "SELECT * FROM foo",
+				TimeAggregated: true,
+			},
+			wantErr: true,
+		},
+		{
+			description: "error when cumulative queries don't have cumulative sum function",
+			config: &MetricConfig{
+				Query:          "SELECT * FROM foo GROUP BY time(1s)",
+				TimeAggregated: true,
+				Cumulative:     true,
+			},
+			wantErr: true,
+		},
+	} {
+		t.Run(tt.description, func(t *testing.T) {
+			err := tt.config.validateQuery()
+			if err != nil && !tt.wantErr {
+				t.Errorf("expected no errors, got %v", err)
+			}
+			if err == nil && tt.wantErr {
+				t.Error("expected error, got nil")
+			}
+		})
+	}
+}
+
 func TestParsingQueryInterval(t *testing.T) {
 	for _, tt := range []struct {
 		description  string
