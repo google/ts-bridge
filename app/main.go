@@ -150,12 +150,12 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 	// This would require documentation update as well for README.md.
 	minPointAge, err := time.ParseDuration(os.Getenv("DATADOG_MIN_POINT_AGE"))
 	if err != nil {
-		return nil, fmt.Errorf("Could not parse MIN_POINT_AGE: %v", err)
+		return nil, fmt.Errorf("Could not parse DATADOG_MIN_POINT_AGE: %v", err)
 	}
 
 	resetInterval, err := time.ParseDuration(os.Getenv("DATADOG_COUNTER_RESET_INTERVAL"))
 	if err != nil {
-		return nil, fmt.Errorf("Could not parse COUNTER_RESET_INTERVAL: %v", err)
+		return nil, fmt.Errorf("Could not parse DATADOG_COUNTER_RESET_INTERVAL: %v", err)
 	}
 
 	return tsbridge.NewConfig(ctx, &tsbridge.ConfigOptions{
