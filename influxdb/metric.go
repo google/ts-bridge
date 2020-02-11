@@ -192,7 +192,7 @@ func (m *Metric) metricDescriptor() *metricpb.MetricDescriptor {
 	}
 }
 
-// sdMetricKind returns Stackdriver metric kind for this metric.
+// metricKind returns Stackdriver metric kind for this metric.
 func (m *Metric) metricKind() metricpb.MetricDescriptor_MetricKind {
 	if m.config.Cumulative {
 		return metricpb.MetricDescriptor_CUMULATIVE
