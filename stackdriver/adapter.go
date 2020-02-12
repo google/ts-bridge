@@ -135,7 +135,7 @@ func (a *Adapter) setDescriptor(ctx context.Context, project, name string, desc 
 }
 
 // LatestTimestamp determines the timestamp of a latest point for a given metric in SD.
-// If metric does not exist, a timestamp which is `lookBackInterval` ago in the past is returned to backfill some data from Datadog.
+// If metric does not exist, a timestamp which is `lookBackInterval` ago in the past is returned to backfill some data.
 func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (time.Time, error) {
 	latest := time.Now().Add(-a.lookBackInterval)
 

@@ -1,7 +1,8 @@
 Time Series Bridge is a tool that can be used to import metrics from one
 monitoring system into another. It regularly runs a specific query against a
-source monitoring system (currently only Datadog) and writes new time series
-results into the destination system (currently only Stackdriver).
+source monitoring system (currently only Datadog & InfluxDB) and writes
+new time series results into the destination system (currently only
+Stackdriver).
 
 ts-bridge is an App Engine Standard app written in Go.
 
@@ -74,59 +75,41 @@ using a git repository and
     project, or at minimum the **Monitoring Editor** role
 1.  Create a ts-bridge config with no metrics
     *   `cd ~/gopath/src/github.com/google/ts-bridge/app; cp metrics.yaml.example metrics.yaml`
-    *   Edit the yaml file, remove the datadog\_metrics sample content, and copy
-        in the name of the project you just created into the
-        stackdriver\_destinations section.
+    *   Edit the yaml file, remove the datadog\_metrics and influxdb\_metrics
+        sample content, and copy in the name of the project you just created
+        into the stackdriver\_destinations section.
     *   Your `metrics.yaml` file should look like this:
     ```
     datadog_metrics:
+    influxdb_metrics:
     stackdriver_destinations:
       - name: stackdriver
         project_id: "your_project_name"
     ```
-1.  Turn on the status page (uncomment #ENABLE\_STATUS\_PAGE: "yes" in `app.yaml`)
-1.  Update `SD_PROJECT_FOR_INTERNAL_METRICS` in your `app.yaml` to match the name of your GCP project.
-1.  Launch a dev server
+2.  Turn on the status page (uncomment #ENABLE\_STATUS\_PAGE: "yes" in `app.yaml`)
+3.  Update `SD_PROJECT_FOR_INTERNAL_METRICS` in your `app.yaml` to match the name of your GCP project.
+4.  Launch a dev server
     *   `dev_appserver.py app.yaml --port 18080`
-1.  Test via localhost/sync
+5.  Test via localhost/sync
     *   `curl http://localhost:18080/sync`
-1.  Verify that no error messages are shown. Troubleshooting guide:
+6.  Verify that no error messages are shown. Troubleshooting guide:
 
     | Error message | Remedy |
     | --- | --- |
     | ERROR: StatsCollector: rpc error: code = PermissionDenied desc = The caller does not have permission | Ensure the authenticating user has at least the "Monitoring Editor" role |
 
-1.  Configure metrics by getting your
-    [API and application keys](https://docs.datadoghq.com/api/?lang=go#overview)
-    from Datadog and copying over your Datadog queries into `metrics.yaml`
-    *   Your `metrics.yaml` file should now look something like this:
-    ```
-    datadog_metrics:
-      - name: your_first_metric_name
-        query: "your metric query (copied from your Datadog dashboard)"
-        api_key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        application_key: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-        destination: stackdriver
-      - name: your_second_metric_name
-        query: "your metric query (copied from your Datadog dashboard)"
-        api_key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        application_key: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-        destination: stackdriver
-    stackdriver_destinations:
-      - name: stackdriver
-        project_id: "your_project_name"
-    ```
-    *   see [below](#metrics-yaml-configuration) for configuration details
-1.  Test metric ingestion via localhost/sync
+7.  Configure metrics by following the instructions
+    [below](#metrics-yaml-configuration).
+8.  Test metric ingestion via localhost/sync
     *   `curl http://localhost:18080/sync`
-1.  Verify that metrics are visible on status page
+9.  Verify that metrics are visible on status page
     *   In Cloud Shell, click the ‘web preview’ button and change the port to
         18080
     *   If running on a local workstation, browse to http://localhost:18080/
-1.  Verify that metrics are visible in the
+10. Verify that metrics are visible in the
     [Stackdriver UI](https://app.google.stackdriver.com/metrics-explorer)
-1.  Kill the local dev server
-1.  Revert `SD_PROJECT_FOR_INTERNAL_METRICS` to `""` in `app.yaml`
+11. Kill the local dev server
+12. Revert `SD_PROJECT_FOR_INTERNAL_METRICS` to `""` in `app.yaml`
 
 ## Deploy In Production
 
@@ -154,54 +137,9 @@ Metric sources and targets are configured in the `app/metrics.yaml` file.
 
 ## Metric Sources
 
-### Datadog
-
-To import a metric from Datadog, ts-bridge regularly runs a configured query
-against the
-[Datadog Query API](https://docs.datadoghq.com/api/?lang=python#query-time-series-points).
-
-Metrics imported from Datadog are defined in the `datadog_metrics` section of
-`app/metrics.yaml`. The following parameters need to be specified for each
-metric:
-
-*   `name`: base name of the metric. While exporting to Stackdriver, this name
-    will be prefixed with `custom.googleapis.com/datadog/`.
-*   `query`: Datadog query expression. This needs to return a single time series
-    (tags/labels are not supported yet).
-*   `api_key`: Datadog API key.
-*   `application_key`: Datadog Application key.
-*   `destination`: name of the Stackdriver destination that query result will be
-    written to. Destinations need to be explicitly listed in the
-    `stackdriver_destinations` section of the configuration file.
-*   `cumulative`: a boolean flag describing whether query result should be
-    imported as a cumulative metric (a monotonically increasing counter). See
-    [Cumulative metrics](#cumulative-metrics) section below for more details.
-
-All parameters are required, except for `cumulative` (that defaults to `false`).
-
-Please keep in mind the following details about Datadog API:
-
-*   There is an API rate limit of
-    [300 queries per hour](https://docs.datadoghq.com/api/?lang=python#rate-limiting)
-    that applies to the whole organization. Even if ts-bridge is the only user
-    of the Query API, it still means you can only import 5 metrics if you are
-    querying every minute (which is the default). The limit can be raised.
-*   If you are using a
-    [rollup](https://docs.datadoghq.com/graphing/miscellaneous/functions/#rollup)
-    function as part of your query, Datadog will return a single point per each
-    rollup interval. If rollup interval is longer than the importing period of
-    ts-bridge, some import operations will fetch 0 new points. For example, if
-    your query is producing a 10-minute ratio ( `xxx.rollup(sum, 600) /
-    yyy.rollup(sum, 600)`) and you are using the default importing period (1
-    minute), ts-bridge will still issue the query every minute, however Datadog
-    will only return a single point once every 10 minutes.
-*   If you are not using the `rollup` function, Datadog will return points at
-    maximum possible resolution (unless the query covers a very long time
-    interval). Please keep in mind that Datadog might return more than 1 point
-    per minute, and all points will be written to Stackdriver, even though
-    Stackdriver does not allow querying with
-    [alignment period](https://cloud.google.com/monitoring/charts/metrics-selector#alignment)
-    shorter than 1 minute.
+See the READMEs for how to import metrics from supported metric sources:
+* [Datadog](datadog/README.md)
+* [InfluxDB](influxdb/README.md)
 
 ## Metric Destinations
 
@@ -262,17 +200,15 @@ the `env_variables` section of `app/app.yaml`.
     parallel. Parallel updates are scheduled using goroutines and still happen
     in the context of a single incoming HTTP request, and setting this value too
     high might result in the App Engine instance running out of RAM.
-*   `DATADOG_MIN_POINT_AGE`: minimum age of a data point returned by Datadog
+*   `MIN_POINT_AGE`: minimum age of a data point returned by a metric source
     that makes it eligible for being written. Points that are very fresh
-    (default is 1.5 minutes) are ignored, since Datadog might return incomplete
-    data for them if some input data is delayed.
-*   `DATADOG_COUNTER_RESET_INTERVAL`: while importing counters, ts-bridge needs
-    to reset 'start time' regularly to keep the query time window small enough
-    to avoid [aggregation](https://docs.datadoghq.com/graphing/faq/what-is-the-granularity-of-my-graphs-am-i-seeing-raw-data-or-aggregates-on-my-graph/)
-    on Datadog side. This parameter defines how often a new start time is
-    chosen. 30 minutes should be sufficient for metrics that have a point
-    every 10 seconds. See [Cumulative metrics](#cumulative-metrics) section
-    below for more details.
+    (default is 1.5 minutes) are ignored, since the metric source might return
+    incomplete data for them if some input data is delayed.
+*   `COUNTER_RESET_INTERVAL`: while importing counters, ts-bridge needs
+    to reset 'start time' regularly to keep the query time window small enough.
+    This parameter defines how often a new start time is chosen, and is
+    defaulted to 30 minutes. See [Cumulative metrics](#cumulative-metrics)
+    section below for more details.
 *   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
     (disabled by default).
 
@@ -285,49 +221,22 @@ Stackdriver supports cumulative metrics, which are monotonically increasing
 counters. Such metrics allow calculating deltas and rates over different
 [alignment periods](https://cloud.google.com/monitoring/custom-metrics/reading-metrics#aligning).
 
-While Datadog does not have first-class support for cumulative metrics, it
-is possible to use the
-[cumsum](https://docs.datadoghq.com/graphing/functions/arithmetic/#cumulative-sum)
-query function to retreive a cumulative sum. Time Series Bridge can use
-result of such queries and import them as cumulative metrics, but such
-queries need to be explicitly annotated with a `cumulative` option in
-`metrics.yaml` being set to `true`.
+While neither Datadog nor InfluxDB have first-class support for cumulative
+metrics, they both have cumulative functions that allow their queries to
+retrive a cumulative sum. Time Series Bridge can use the results of such
+queries and import them as cumulative metrics, but such queries need to be
+explicitly annotated with a `cumulative` option in `metrics.yaml` being set to
+`true`.
 
 For queries that are marked as `cumulative`, ts-bridge will regularly
-choose a 'start time' and then issue queries with that time passed in
-the [from](https://docs.datadoghq.com/api/?lang=python#query-timeseries-points)
-API parameter. As the result, Datadog will return a monotonically
-increasing time series with a sum of all measurements since 'start time'.
-To avoid aggregation of multiple points into one on Datadog side,
-'start time' regularly gets moved forward, keeping the query time window
-short (see `DATADOG_COUNTER_RESET_INTERVAL`).
-Such resets are handled correctly by Stackdriver, since it requires
-explicit start time to be provided for cumulative metric points.
-
-Often, for Datadog to provide a cumulative sum of all measurements,
-the `.as_count()` suffix needs to be appended to metric name. Otherwise
-measurements might be provided as per-second rates rather than exact counts.
-
-For metrics that have measurements more often than every minute, you might
-also want to append the `.rollup()` function as
-[described below](#writing-points-to-stackdriver-too-frequently).
-
-For example, to import the counter metric called `http_requests` as a
-cumulative metric to Stackdriver, you might configure the following query in
-ts-bridge (and set `cumulative` to `true`):
-
-    cumsum(sum:http_requests{*}.as_count().rollup(sum, 60))
-
-To unpack this:
-
-* `cumsum()` makes Datadog return a cumulative sum of measurements;
-* `sum:` prefix ensures that sum is used as the aggregation method if there
-  are multiple time series with the same metric name but different tags
-  (for example, reported from different machines);
-* `.as_count()` suffix gathers actual measurements rather than per-second
-  rates;
-* `.rollup(sum, 60)` aggregates values into 60-second intervals in case
-  there are multiple measurements for this metric reported per minute.
+choose a 'start time' and then issue queries with from that time. As the
+result, Datadog and InfluxDB will return a monotonically
+increasing time series with a sum of all measurements since 'start time'. To
+avoid processing too many points as the cumulative interval increases,
+'start time' regularly gets moved forward, keeping the query time window short
+(see `COUNTER_RESET_INTERVAL`). Such resets are handled correctly by
+Stackdriver, since it requires explicit start time to be provided for
+cumulative metric points.
 
 # Status Page
 
@@ -378,19 +287,8 @@ following error from Stackdriver:
 Stackdriver documentation
 [recommends](https://cloud.google.com/monitoring/custom-metrics/creating-metrics#writing-ts)
 to not add points to the same time series faster than once per minute. If your
-Datadog query returns multiple points per minute, you can use the
-[rollup](https://docs.datadoghq.com/graphing/functions/rollup/) function in
-your query to aggregate multiple points. For example, instead of a query like
-this:
-
-    sum:http_request_count{environment:prod}
-
-You can use a query like this:
-
-    sum:http_request_count{environment:prod}.rollup(sum, 60)
-
-In this example, `rollup()` will make sure the query returns a single point
-per minute, which will be a sum of all points within that minute.
+metric query returns multiple points per minute, it is recommended you use
+aggregation to reduce the number of points.
 
 # Development
 
