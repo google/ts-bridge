@@ -221,12 +221,12 @@ func (m *Metric) filterPoints(lastPoint, endTime time.Time, points []point) ([]p
 			}
 
 			p.timestamp = p.timestamp.Add(queryInterval)
-		}
 
-		// If this (time-aggregated) time interval hasn't finished accumulating
-		// data, wait for it to complete next time around.
-		if p.timestamp.UnixNano() > endTime.UnixNano() {
-			continue
+			// If this (time-aggregated) interval hasn't finished accumulating
+			// data, wait for it to complete next time around.
+			if p.timestamp.UnixNano() > endTime.UnixNano() {
+				continue
+			}
 		}
 
 		// If we have already processed this (cumulative) point, ignore it.
@@ -270,12 +270,10 @@ func (m *Metric) convertPoint(startTime time.Time, p point) (*monitoringpb.Point
 		EndTime: et,
 	}
 	if m.config.Cumulative {
-		st, err := ptypes.TimestampProto(startTime)
+		interval.StartTime, err = ptypes.TimestampProto(startTime)
 		if err != nil {
 			return nil, err
 		}
-
-		interval.StartTime = st
 	}
 
 	return &monitoringpb.Point{
