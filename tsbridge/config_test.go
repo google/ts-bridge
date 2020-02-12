@@ -32,11 +32,11 @@ func fakeAppIDFunc(app string) func(context.Context) string {
 func TestNewConfigSimple(t *testing.T) {
 	cfg, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml"})
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
-	if len(cfg.metrics) != 2 {
-		t.Errorf("cfg.metrics expected to have 2 elements; got %v", cfg.metrics)
+	if len(cfg.metrics) != 4 {
+		t.Errorf("cfg.metrics expected to have 4 elements; got %v", cfg.metrics)
 	}
 
 	// 'testapp' is the default app id used by aetest.
@@ -67,6 +67,7 @@ func TestNewConfigFailedValidation(t *testing.T) {
 		{"no_destination.yaml", "destination 'foo' not found"},
 		{"no_datadog_keys.yaml", "configuration file validation error"},
 		{"invalid_name.yaml", "configuration file validation error"},
+		{"no_influxdb_query.yaml", "configuration file validation error"},
 	} {
 		_, err := NewConfig(testCtx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename)})
 		if !strings.Contains(err.Error(), tt.wantErr) {
