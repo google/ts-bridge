@@ -16,6 +16,7 @@ package influxdb
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/influxdata/influxql"
@@ -30,6 +31,7 @@ type MetricConfig struct {
 	Username       string
 	Password       string
 	TimeAggregated bool
+	Cumulative     bool
 }
 
 func (c *MetricConfig) validateQuery() error {
@@ -37,6 +39,10 @@ func (c *MetricConfig) validateQuery() error {
 		if _, err := c.queryInterval(); err != nil {
 			return err
 		}
+	}
+
+	if c.Cumulative && !strings.Contains(strings.ToLower(c.Query), "cumulative_sum") {
+		return fmt.Errorf("cumulative metric with query '%s' does not contain the cumulative_sum Influx function", c.Query)
 	}
 
 	return nil
