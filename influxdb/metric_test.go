@@ -26,8 +26,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/ts-bridge/mocks"
 	"github.com/google/ts-bridge/record"
 
+	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/appengine/aetest"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
@@ -100,6 +102,23 @@ func mustUnmarshalTimeSeries(descText string, tsTexts ...string) (*metricpb.Metr
 	return desc, ts
 }
 
+func compareTimeSeries(t *testing.T, desc, expectedDesc *metricpb.MetricDescriptor, ts, expectedTS []*monitoringpb.TimeSeries) {
+	t.Helper()
+	if !proto.Equal(desc, expectedDesc) {
+		t.Errorf("expected descriptor %v; got %v", expectedDesc, desc)
+	}
+
+	if len(ts) != len(expectedTS) {
+		t.Fatalf("expected %d time series; got %d", len(expectedTS), len(ts))
+	}
+
+	for i, p := range ts {
+		if !proto.Equal(p, expectedTS[i]) {
+			t.Errorf("expected time series %v; got %v", expectedTS[i], p)
+		}
+	}
+}
+
 func TestMetricConfig(t *testing.T) {
 	c := &MetricConfig{Query: "foo"}
 	m, err := NewSourceMetric("metricname", c, time.Second, time.Hour)
@@ -128,14 +147,16 @@ func getParam(params url.Values, key string) string {
 }
 
 func TestStackdriverDataQuery(t *testing.T) {
-	now := time.Unix(0, 1000000000000) // (1000s)
-	timeNow = func() time.Time { return now }
-	lastPoint := time.Unix(0, 800000000000) // (800s)
+	startTime := time.Unix(0, 600000000000)                           // (600s)
+	lastPoint := time.Unix(0, 800000000000)                           // (800s)
+	timeNow = func() time.Time { return time.Unix(0, 1000000000000) } // (1000s)
 
 	for _, tt := range []struct {
-		description string
-		config      *MetricConfig
-		wantQuery   string
+		description          string
+		config               *MetricConfig
+		counterResetInterval time.Duration
+		wantCounterStartTime time.Time
+		wantQuery            string
 	}{
 		{
 			description: "correct gauge metric query",
@@ -153,6 +174,50 @@ func TestStackdriverDataQuery(t *testing.T) {
 				TimeAggregated: true,
 			},
 			wantQuery: "SELECT * FROM (SELECT MEAN(f) FROM foo GROUP BY time(10s)) WHERE time >= 800000000000 AND time < 999000000000",
+		},
+		{
+			description: "correct cumulative metric query with start time in counter reset interval",
+			config: &MetricConfig{
+				Query:      "SELECT CUMULATIVE_SUM(f) FROM foo",
+				Database:   "bar",
+				Cumulative: true,
+			},
+			counterResetInterval: 500 * time.Second,
+			wantQuery:            "SELECT * FROM (SELECT CUMULATIVE_SUM(f) FROM foo) WHERE time >= 600000000000 AND time < 999000000000",
+		},
+		{
+			description: "correct cumulative metric query with only lastPoint in counter reset interval",
+			config: &MetricConfig{
+				Query:      "SELECT CUMULATIVE_SUM(f) FROM foo",
+				Database:   "bar",
+				Cumulative: true,
+			},
+			counterResetInterval: 300 * time.Second,
+			wantCounterStartTime: time.Unix(0, 800000000001),
+			wantQuery:            "SELECT * FROM (SELECT CUMULATIVE_SUM(f) FROM foo) WHERE time >= 600000000000 AND time < 999000000000",
+		},
+		{
+			description: "correct cumulative metric query with no timestamps in counter reset interval",
+			config: &MetricConfig{
+				Query:      "SELECT CUMULATIVE_SUM(f) FROM foo",
+				Database:   "bar",
+				Cumulative: true,
+			},
+			counterResetInterval: 100 * time.Second,
+			wantCounterStartTime: time.Unix(0, 950000000000),
+			wantQuery:            "SELECT * FROM (SELECT CUMULATIVE_SUM(f) FROM foo) WHERE time >= 600000000000 AND time < 999000000000",
+		},
+		{
+			description: "correct time aggregated cumulative metric query with only lastPoint in counter reset interval",
+			config: &MetricConfig{
+				Query:          "SELECT CUMULATIVE_SUM(COUNT(f)) FROM foo GROUP BY time(10s)",
+				Database:       "bar",
+				TimeAggregated: true,
+				Cumulative:     true,
+			},
+			counterResetInterval: 300 * time.Second,
+			wantCounterStartTime: time.Unix(0, 800000000000),
+			wantQuery:            "SELECT * FROM (SELECT CUMULATIVE_SUM(COUNT(f)) FROM foo GROUP BY time(10s)) WHERE time >= 600000000000 AND time < 999000000000",
 		},
 	} {
 		t.Run(tt.description, func(t *testing.T) {
@@ -179,9 +244,25 @@ func TestStackdriverDataQuery(t *testing.T) {
 			}))
 			defer server.Close()
 
+			// Set up mock metric records for returning counter start time.
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			r := mocks.NewMockMetricRecord(mockCtrl)
+			r.EXPECT().GetCounterStartTime().AnyTimes().DoAndReturn(func() time.Time {
+				return startTime
+			})
+			// Verify that we are setting the appropriate counter start time.
+			if !tt.wantCounterStartTime.IsZero() {
+				r.EXPECT().SetCounterStartTime(gomock.Any(), tt.wantCounterStartTime).Times(1)
+			}
+
 			tt.config.Endpoint = server.URL
-			m, _ := NewSourceMetric("metricname", tt.config, time.Second, time.Hour)
-			m.StackdriverData(testCtx, lastPoint, &record.DatastoreMetricRecord{})
+			m, err := NewSourceMetric("metricname", tt.config, time.Second, tt.counterResetInterval)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			m.StackdriverData(testCtx, lastPoint, r)
 			if !requestHandled {
 				t.Fatalf("StackdriverData did not send InfluxDB request")
 			}
@@ -260,7 +341,7 @@ func TestStackdriverDataErrors(t *testing.T) {
 }
 
 func TestStackdriverDataGaugeResponse(t *testing.T) {
-	_, server := makeTestServer("good_gauge.json")
+	_, server := makeTestServer("good.json")
 	defer server.Close()
 
 	c := &MetricConfig{
@@ -290,9 +371,9 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 			value_type: DOUBLE
 			points: <
 				interval: <
-					end_time: < seconds: 1579802400 nanos: 0 >
+					end_time: < seconds: 1010 nanos: 0 >
 				>
-				value: < double_value: 33.1 >
+				value: < double_value: 48.8 >
 			>
 		`,
 		`
@@ -302,31 +383,31 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 			value_type: DOUBLE
 			points: <
 				interval: <
-					end_time: < seconds: 1579803000 nanos: 0 >
+					end_time: < seconds: 1020 nanos: 0 >
 				>
-				value: < double_value: 48.8 >
+				value: < double_value: 59.4 >
+			>
+		`,
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: GAUGE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					end_time: < seconds: 1030 nanos: 0 >
+				>
+				value: < double_value: 55.5 >
 			>
 		`,
 	}
 
 	expectedDesc, expectedTS := mustUnmarshalTimeSeries(expectedDescRaw, expectedTSRaw...)
-	if !proto.Equal(desc, expectedDesc) {
-		t.Errorf("expected descriptor %v; got %v", expectedDesc, desc)
-	}
-
-	if len(ts) != len(expectedTS) {
-		t.Fatalf("expected %d time series; got %d", len(expectedTS), len(ts))
-	}
-
-	for i, p := range ts {
-		if !proto.Equal(p, expectedTS[i]) {
-			t.Errorf("expected time series %v; got %v", expectedTS[i], p)
-		}
-	}
+	compareTimeSeries(t, desc, expectedDesc, ts, expectedTS)
 }
 
-func TestStackdriverDataTimeAggregatedGaugeResponse(t *testing.T) {
-	_, server := makeTestServer("good_timeagg_gauge.json")
+func TestStackdriverDataTimeAggGaugeResponse(t *testing.T) {
+	_, server := makeTestServer("good.json")
 	defer server.Close()
 
 	c := &MetricConfig{
@@ -334,17 +415,15 @@ func TestStackdriverDataTimeAggregatedGaugeResponse(t *testing.T) {
 		Endpoint:       server.URL,
 		TimeAggregated: true,
 	}
-	m, err := NewSourceMetric("metricname", c, time.Second, 0)
+	m, err := NewSourceMetric("metricname", c, 0, time.Hour)
 	if err != nil {
 		t.Fatalf("failed to create metric with config %v: %v", c, err)
 	}
 
 	// With offsetDuration set to 0, this will be the endTime used in the
 	// Influx query.
-	now := time.Unix(0, 1035000000000) // (1035s)
-	timeNow = func() time.Time { return now }
-
-	lastPoint := time.Unix(0, 1015000000000) // (1015s)
+	lastPoint := time.Unix(0, 1015000000000)                          // (1015s)
+	timeNow = func() time.Time { return time.Unix(0, 1035000000000) } // (1035s)
 	desc, ts, err := m.StackdriverData(testCtx, lastPoint, &record.DatastoreMetricRecord{})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
@@ -389,17 +468,178 @@ func TestStackdriverDataTimeAggregatedGaugeResponse(t *testing.T) {
 	}
 
 	expectedDesc, expectedTS := mustUnmarshalTimeSeries(expectedDescRaw, expectedTSRaw...)
-	if !proto.Equal(desc, expectedDesc) {
-		t.Errorf("expected descriptor %v; got %v", expectedDesc, desc)
+	compareTimeSeries(t, desc, expectedDesc, ts, expectedTS)
+}
+
+func TestStackdriverDataCumulativeResponse(t *testing.T) {
+	_, server := makeTestServer("good.json")
+	defer server.Close()
+
+	c := &MetricConfig{
+		Query:      "SELECT CUMULATIVE_SUM(f) FROM foo",
+		Endpoint:   server.URL,
+		Cumulative: true,
+	}
+	m, err := NewSourceMetric("metricname", c, 0, time.Hour)
+	if err != nil {
+		t.Fatalf("failed to create metric with config %v: %v", c, err)
 	}
 
-	if len(ts) != len(expectedTS) {
-		t.Fatalf("expected %d time series; got %d", len(expectedTS), len(ts))
+	startTime := time.Unix(0, 1000000000000) // (1000s)
+	lastPoint := time.Unix(0, 1010000000000) // (1010s)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	r := mocks.NewMockMetricRecord(mockCtrl)
+	r.EXPECT().GetCounterStartTime().AnyTimes().DoAndReturn(func() time.Time {
+		return startTime
+	})
+
+	desc, ts, err := m.StackdriverData(testCtx, lastPoint, r)
+	if err != nil {
+		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
 
-	for i, p := range ts {
-		if !proto.Equal(p, expectedTS[i]) {
-			t.Errorf("expected time series %v; got %v", expectedTS[i], p)
-		}
+	expectedDescRaw := `
+		type: "custom.googleapis.com/influxdb/metricname"
+		metric_kind: CUMULATIVE
+		value_type: DOUBLE
+		description: "InfluxDB query: metricname"
+		display_name: "SELECT CUMULATIVE_SUM(f) FROM foo"
+	`
+
+	// Expect 1010 to be filtered out since it was previously seen.
+	expectedTSRaw := []string{
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: CUMULATIVE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					start_time: < seconds: 1000 nanos: 0 >
+					end_time: < seconds: 1020 nanos: 0 >
+				>
+				value: < double_value: 59.4 >
+			>
+		`,
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: CUMULATIVE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					start_time: < seconds: 1000 nanos: 0 >
+					end_time: < seconds: 1030 nanos: 0 >
+				>
+				value: < double_value: 55.5 >
+			>
+		`,
 	}
+
+	expectedDesc, expectedTS := mustUnmarshalTimeSeries(expectedDescRaw, expectedTSRaw...)
+	compareTimeSeries(t, desc, expectedDesc, ts, expectedTS)
+}
+
+func TestStackdriverDataTimeAggCumulativeResponse(t *testing.T) {
+	_, server := makeTestServer("good.json")
+	defer server.Close()
+
+	c := &MetricConfig{
+		Query:          "SELECT CUMULATIVE_SUM(COUNT(f)) FROM foo GROUP BY time(10s)",
+		Endpoint:       server.URL,
+		Cumulative:     true,
+		TimeAggregated: true,
+	}
+	m, err := NewSourceMetric("metricname", c, time.Second, time.Hour)
+	if err != nil {
+		t.Fatalf("failed to create metric with config %v: %v", c, err)
+	}
+
+	lastPoint := time.Unix(0, 0)                                      // (0s)
+	startTime := time.Unix(0, 1015000000000)                          // (1015s)
+	timeNow = func() time.Time { return time.Unix(0, 1035000000000) } // (1035s)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	r := mocks.NewMockMetricRecord(mockCtrl)
+	r.EXPECT().GetCounterStartTime().AnyTimes().DoAndReturn(func() time.Time {
+		return startTime
+	})
+
+	desc, ts, err := m.StackdriverData(testCtx, lastPoint, r)
+	if err != nil {
+		t.Fatalf("unexpected StackdriverData error: %v", err)
+	}
+
+	expectedDescRaw := `
+		type: "custom.googleapis.com/influxdb/metricname"
+		metric_kind: CUMULATIVE
+		value_type: DOUBLE
+		description: "InfluxDB query: metricname"
+		display_name: "SELECT CUMULATIVE_SUM(COUNT(f)) FROM foo GROUP BY time(10s)"
+	`
+
+	// Expect [1010, 1020) to be cut short into [1015, 1020), and the last
+	// interval [1030, 1040) to be ignored since it is not finished
+	// aggregating data.
+	expectedTSRaw := []string{
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: CUMULATIVE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					start_time: < seconds: 1015 nanos: 0 >
+					end_time: < seconds: 1020 nanos: 0 >
+				>
+				value: < double_value: 48.8 >
+			>
+		`,
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: CUMULATIVE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					start_time: < seconds: 1015 nanos: 0 >
+					end_time: < seconds: 1030 nanos: 0 >
+				>
+				value: < double_value: 59.4 >
+			>
+		`,
+	}
+
+	expectedDesc, expectedTS := mustUnmarshalTimeSeries(expectedDescRaw, expectedTSRaw...)
+	compareTimeSeries(t, desc, expectedDesc, ts, expectedTS)
+
+	// Now with the lastPoint moved up, we ensure that we properly filter
+	// already seen cumulative intervals.
+	lastPoint = time.Unix(0, 1030000000000)                           // (1030s)
+	timeNow = func() time.Time { return time.Unix(0, 1065000000000) } // (1065s)
+	desc, ts, err = m.StackdriverData(testCtx, lastPoint, r)
+	if err != nil {
+		t.Fatalf("unexpected StackdriverData error: %v", err)
+	}
+
+	expectedTSRaw = []string{
+		`
+			metric: < type: "custom.googleapis.com/influxdb/metricname" >
+			resource: < type: "global" >
+			metric_kind: CUMULATIVE
+			value_type: DOUBLE
+			points: <
+				interval: <
+					start_time: < seconds: 1015 nanos: 0 >
+					end_time: < seconds: 1040 nanos: 0 >
+				>
+				value: < double_value: 55.5 >
+			>
+		`,
+	}
+	expectedDesc, expectedTS = mustUnmarshalTimeSeries(expectedDescRaw, expectedTSRaw...)
+	compareTimeSeries(t, desc, expectedDesc, ts, expectedTS)
 }
