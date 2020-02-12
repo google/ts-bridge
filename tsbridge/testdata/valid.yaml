@@ -19,9 +19,8 @@ influxdb_metrics:
     query: "query four"
     database: db
     endpoint: localhost:8888
-    auth:
-      username: user
-      password: 1234
+    username: user
+    password: 1234
     destination: stackdriver
     time_aggregated: false
     cumulative: false
