@@ -206,9 +206,9 @@ the `env_variables` section of `app/app.yaml`.
     incomplete data for them if some input data is delayed.
 *   `COUNTER_RESET_INTERVAL`: while importing counters, ts-bridge needs
     to reset 'start time' regularly to keep the query time window small enough.
-    This parameter defines how often a new start time is chosen, and is
-    defaulted to 30 minutes. See [Cumulative metrics](#cumulative-metrics)
-    section below for more details.
+    This parameter defines how often a new start time is chosen, and defaults
+    to 30 minutes. See [Cumulative metrics](#cumulative-metrics) section below
+    for more details.
 *   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
     (disabled by default).
 

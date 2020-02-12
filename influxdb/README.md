@@ -39,6 +39,11 @@ can be time aggregated as the following:
 
 `SELECT MEAN(free_disk_space) FROM sys_disk GROUP BY time(1m)`.
 
+When using queries with time aggregation, ts-bridge requires the
+`time_aggregated` flag to be set to `true` in the metric's YAML configuration.
+Otherwise, unexpected errors may arise when attempting to process these time
+series.
+
 Currently only InfluxDB 1.x series is supported.
 
 ## Cumulative metrics
@@ -58,6 +63,9 @@ effect in InfluxDB 1.6, a subquery can be defined instead:
 
 `SELECT CUMULATIVE_SUM(*) FROM (SELECT COUNT(request) FROM nginx_access_log
 GROUP BY time(1m))`.
+
+When using the above example, make sure to set `cumulative` to `true`, and
+`time_aggregated` to `true` if applicable.
 
 ### Zero value intervals
 
