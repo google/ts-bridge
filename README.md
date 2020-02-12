@@ -1,6 +1,6 @@
 Time Series Bridge is a tool that can be used to import metrics from one
 monitoring system into another. It regularly runs a specific query against a
-source monitoring system (currently only Datadog & InfluxDB) and writes
+source monitoring system (currently Datadog & InfluxDB) and writes
 new time series results into the destination system (currently only
 Stackdriver).
 
@@ -86,49 +86,49 @@ using a git repository and
       - name: stackdriver
         project_id: "your_project_name"
     ```
-2.  Turn on the status page (uncomment #ENABLE\_STATUS\_PAGE: "yes" in `app.yaml`)
-3.  Update `SD_PROJECT_FOR_INTERNAL_METRICS` in your `app.yaml` to match the name of your GCP project.
-4.  Launch a dev server
+1.  Turn on the status page (uncomment #ENABLE\_STATUS\_PAGE: "yes" in `app.yaml`)
+1.  Update `SD_PROJECT_FOR_INTERNAL_METRICS` in your `app.yaml` to match the name of your GCP project.
+1.  Launch a dev server
     *   `dev_appserver.py app.yaml --port 18080`
-5.  Test via localhost/sync
+1.  Test via localhost/sync
     *   `curl http://localhost:18080/sync`
-6.  Verify that no error messages are shown. Troubleshooting guide:
+1.  Verify that no error messages are shown. Troubleshooting guide:
 
     | Error message | Remedy |
     | --- | --- |
     | ERROR: StatsCollector: rpc error: code = PermissionDenied desc = The caller does not have permission | Ensure the authenticating user has at least the "Monitoring Editor" role |
 
-7.  Configure metrics by following the instructions
+1.  Configure metrics by following the instructions
     [below](#metrics-yaml-configuration).
-8.  Test metric ingestion via localhost/sync
+1.  Test metric ingestion via localhost/sync
     *   `curl http://localhost:18080/sync`
-9.  Verify that metrics are visible on status page
+1.  Verify that metrics are visible on status page
     *   In Cloud Shell, click the ‘web preview’ button and change the port to
         18080
     *   If running on a local workstation, browse to http://localhost:18080/
-10. Verify that metrics are visible in the
+1.  Verify that metrics are visible in the
     [Stackdriver UI](https://app.google.stackdriver.com/metrics-explorer)
-11. Kill the local dev server
-12. Revert `SD_PROJECT_FOR_INTERNAL_METRICS` to `""` in `app.yaml`
+1.  Kill the local dev server
+1.  Revert `SD_PROJECT_FOR_INTERNAL_METRICS` to `""` in `app.yaml`
 
 ## Deploy In Production
 
 1.  Ensure that you either have **Owner** permissions for the whole Cloud
     project, or at minimum the **App Engine Admin** and **Cloud Scheduler
     Admin** roles
-2.  Disable the status page (comment out ENABLE\_STATUS\_PAGE: "yes" in
+1.  Disable the status page (comment out ENABLE\_STATUS\_PAGE: "yes" in
     `app.yaml`)
     *   See [below](#status-page) if you'd like to keep the status page enabled
         in prod.
-3.  Create the App Engine application
+1.  Create the App Engine application
     *   `gcloud app create`
     *   Choose the App Engine region. If you are using ts-bridge to import
         metrics originating from a system running on GCP, you should run
         ts-bridge in a different Cloud region from the system itself to ensure
         independent failure domains.
-4.  Deploy app
+1.  Deploy app
     *   `gcloud app deploy --project <your_project_name> --version live`
-5.  Verify in the Stackdriver metrics explorer that metrics are being imported
+1.  Verify in the Stackdriver metrics explorer that metrics are being imported
     once a minute
 
 # metrics.yaml Configuration
@@ -206,15 +206,9 @@ the `env_variables` section of `app/app.yaml`.
     incomplete data for them if some input data is delayed.
 *   `COUNTER_RESET_INTERVAL`: while importing counters, ts-bridge needs
     to reset 'start time' regularly to keep the query time window small enough.
-<<<<<<< HEAD
     This parameter defines how often a new start time is chosen, and defaults
     to 30 minutes. See [Cumulative metrics](#cumulative-metrics) section below
     for more details.
-=======
-    This parameter defines how often a new start time is chosen, and is
-    defaulted to 30 minutes. See [Cumulative metrics](#cumulative-metrics)
-    section below for more details.
->>>>>>> Update documentation with InfluxDB
 *   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
     (disabled by default).
 

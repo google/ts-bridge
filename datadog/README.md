@@ -23,7 +23,7 @@ metric:
     imported as a cumulative metric (a monotonically increasing counter). See
     [Cumulative metrics](#cumulative-metrics) section below for more details.
 
-All parameters are required, except for `cumulative` (that defaults to `false`).
+All parameters are required, except for `cumulative` (which defaults to `false`).
 
 For metrics that have measurements more often than every minute, you might
 also want to append the `.rollup()` function to avoid
@@ -36,7 +36,8 @@ Please keep in mind the following details about Datadog API:
     [300 queries per hour](https://docs.datadoghq.com/api/?lang=python#rate-limiting)
     that applies to the whole organization. Even if ts-bridge is the only user
     of the Query API, it still means you can only import 5 metrics if you are
-    querying every minute (which is the default). The limit can be raised.
+    querying every minute (which is the default). The limit can be
+    [raised](https://docs.datadoghq.com/api/?lang=bash#rate-limiting).
 *   If you are using a
     [rollup](https://docs.datadoghq.com/graphing/miscellaneous/functions/#rollup)
     function as part of your query, Datadog will return a single point per each
