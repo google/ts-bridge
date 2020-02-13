@@ -146,16 +146,14 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 // newConfig initializes and returns tsbridge config.
 func newConfig(ctx context.Context) (*tsbridge.Config, error) {
-	// TODO: update the variable names to make them not unique to Datadog.
-	// This would require documentation update as well for README.md.
-	minPointAge, err := time.ParseDuration(os.Getenv("DATADOG_MIN_POINT_AGE"))
+	minPointAge, err := time.ParseDuration(os.Getenv("MIN_POINT_AGE"))
 	if err != nil {
-		return nil, fmt.Errorf("Could not parse DATADOG_MIN_POINT_AGE: %v", err)
+		return nil, fmt.Errorf("Could not parse MIN_POINT_AGE: %v", err)
 	}
 
-	resetInterval, err := time.ParseDuration(os.Getenv("DATADOG_COUNTER_RESET_INTERVAL"))
+	resetInterval, err := time.ParseDuration(os.Getenv("COUNTER_RESET_INTERVAL"))
 	if err != nil {
-		return nil, fmt.Errorf("Could not parse DATADOG_COUNTER_RESET_INTERVAL: %v", err)
+		return nil, fmt.Errorf("Could not parse COUNTER_RESET_INTERVAL: %v", err)
 	}
 
 	return tsbridge.NewConfig(ctx, &tsbridge.ConfigOptions{

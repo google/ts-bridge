@@ -9,6 +9,13 @@ datadog_metrics:
     api_key: xxx
     application_key: xxx
     destination: another_stackdriver
+influxdb_metrics:
+  - name: request_count
+    query: "SELECT CUMULATIVE_SUM(COUNT(requests)) FROM nginx_access_log GROUP BY time(1m)"
+    database: telegraf
+    endpoint: http://localhost:8086
+    time_aggregated: true
+    cumulative: true
 stackdriver_destinations:
   - name: stackdriver
   - name: another_stackdriver
