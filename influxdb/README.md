@@ -82,8 +82,8 @@ FILL(0)`.
 ## GCP Setup
 
 A common InfluxDB setup will involve having InfluxDB running in a GCE VM, if
-the user is not using InfluxDB cloud. To connect ts-bridge, an App Engine
-application to a GCE VM, a
+the user is not using InfluxDB cloud. If your InfluxDB instance needs to be
+unreachable from the public Internet, then a
 [serverless VPC](https://cloud.google.com/vpc/docs/configure-serverless-vpc-access)
 can be configured for App Engine, and ts-bridge can then be pointed to the VM's
 internal IP address.
