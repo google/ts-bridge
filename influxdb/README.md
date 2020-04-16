@@ -78,3 +78,16 @@ provided such as:
 
 `SELECT CUMULATIVE_SUM(COUNT(requests)) FROM nginx_access_log GROUP BY time(1m)
 FILL(0)`.
+
+## GCP Setup
+
+A common InfluxDB setup will involve having InfluxDB running in a GCE VM, if
+the user is not using InfluxDB cloud. To connect ts-bridge, an App Engine
+application to a GCE VM, a
+[serverless VPC](https://cloud.google.com/vpc/docs/configure-serverless-vpc-access)
+can be configured for App Engine, and ts-bridge can then be pointed to the VM's
+internal IP address.
+
+If the VPC is used, be sure to
+[declare it](https://cloud.google.com/appengine/docs/standard/go111/connecting-vpc)
+in ts-bridge's `app.yaml`, and deploy the app using `gcloud beta app deploy`.
