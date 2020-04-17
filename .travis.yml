@@ -6,6 +6,7 @@ env:
 install:
   - curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-257.0.0-linux-x86_64.tar.gz | tar xfz - -C $HOME
   - $HOME/google-cloud-sdk/bin/gcloud components install app-engine-python app-engine-go cloud-datastore-emulator
+  # TODO: lock a version of mockgen.
   - go get github.com/golang/mock/mockgen
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
   - chmod +x $GOPATH/bin/dep
