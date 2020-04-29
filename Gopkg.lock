@@ -276,7 +276,7 @@
   revision = "6c5c3d4ff96110173c63a6ffea8f2ffc8bb541b4"
 
 [[projects]]
-  digest = "1:c45665a21fb6639f4c3e4e5217f247d1b99f3f3098166b139b9aa0f76aadcba8"
+  digest = "1:6dbb272f029c53020aca47e83863646b79fe407f6651cb42ede0de81ae982ec0"
   name = "google.golang.org/appengine"
   packages = [
     ".",
@@ -300,8 +300,8 @@
     "user",
   ]
   pruneopts = "UT"
-  revision = "b2f4a3cf3c67576a2ee09e1fe62656a5086ce880"
-  version = "v1.6.1"
+  revision = "553959209a20f3be281c16dd5be5c740a893978f"
+  version = "v1.6.6"
 
 [[projects]]
   branch = "master"
