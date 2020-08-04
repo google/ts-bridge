@@ -59,7 +59,7 @@ using a git repository and
 1.  If you are **not** using Cloud Shell:
     *   Install [go](https://golang.org/)
     *   Download and install the
-        [Cloud SDK for Go](https://cloud.google.com/sdk/docs/)
+        [Cloud SDK](https://cloud.google.com/sdk/docs/)
         *   Initialize with the following commands to set the linked project and
             auth cookie:
         *   `gcloud init`
@@ -67,14 +67,14 @@ using a git repository and
 1.  Clone the ts-bridge source
     *   `go get github.com/google/ts-bridge/...`
     *   The ts-bridge source code should appear in
-        ~/gopath/src/github.com/google/ts-bridge/
+        $GOPATH/src/github.com/google/ts-bridge/
 
 ## End To End Test (Dev Server)
 
 1.  Ensure that you either have **Owner** permissions for the whole Cloud
     project, or at minimum the **Monitoring Editor** role
 1.  Create a ts-bridge config with no metrics
-    *   `cd ~/gopath/src/github.com/google/ts-bridge/app; cp metrics.yaml.example metrics.yaml`
+    *   `cd $GOPATH/src/github.com/google/ts-bridge/app; cp metrics.yaml.example metrics.yaml`
     *   Edit the yaml file, remove the datadog\_metrics and influxdb\_metrics
         sample content, and copy in the name of the project you just created
         into the stackdriver\_destinations section.
