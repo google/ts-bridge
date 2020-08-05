@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/mocks"
-	"github.com/google/ts-bridge/record"
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
@@ -319,7 +319,7 @@ func TestStackdriverDataErrors(t *testing.T) {
 	} {
 		t.Run(tt.description, func(t *testing.T) {
 			handler.filename = tt.filename
-			_, ts, err := m.StackdriverData(testCtx, time.Now(), &record.DatastoreMetricRecord{})
+			_, ts, err := m.StackdriverData(testCtx, time.Now(), &datastore.StoredMetricRecord{})
 			if err != nil {
 				if tt.wantInErr == "" {
 					t.Fatalf("unexpected StackdriverData error: %v", err)
@@ -351,7 +351,7 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 	m, _ := NewSourceMetric("metricname", c, time.Second, time.Hour)
 	// The lastTime time passed here is irrelevant, as we stubbed what the
 	// query returns.
-	desc, ts, err := m.StackdriverData(testCtx, time.Now(), &record.DatastoreMetricRecord{})
+	desc, ts, err := m.StackdriverData(testCtx, time.Now(), &datastore.StoredMetricRecord{})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
@@ -424,7 +424,7 @@ func TestStackdriverDataTimeAggGaugeResponse(t *testing.T) {
 	// Influx query.
 	lastPoint := time.Unix(0, 1015000000000)                          // (1015s)
 	timeNow = func() time.Time { return time.Unix(0, 1035000000000) } // (1035s)
-	desc, ts, err := m.StackdriverData(testCtx, lastPoint, &record.DatastoreMetricRecord{})
+	desc, ts, err := m.StackdriverData(testCtx, lastPoint, &datastore.StoredMetricRecord{})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}

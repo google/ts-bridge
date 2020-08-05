@@ -25,8 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/ts-bridge/record"
+	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/stackdriver"
+	"github.com/google/ts-bridge/storage"
 	"github.com/google/ts-bridge/tsbridge"
 
 	"github.com/dustin/go-humanize"
@@ -114,7 +115,13 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 	for _, m := range config.Metrics() {
 		metricNames = append(metricNames, m.Name)
 	}
-	if err := record.CleanupRecords(ctx, metricNames); err != nil {
+
+	storageManager, err := loadStorageEngine()
+	if err != nil {
+		fmt.Errorf("could not load storage engine: %v", err)
+	}
+
+	if err := storageManager.CleanupRecords(ctx, metricNames); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
 }
@@ -156,10 +163,16 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 		return nil, fmt.Errorf("Could not parse COUNTER_RESET_INTERVAL: %v", err)
 	}
 
+	storageManager, err := loadStorageEngine()
+	if err != nil {
+		return nil, fmt.Errorf("Could not load storage engine: %v", err)
+	}
+
 	return tsbridge.NewConfig(ctx, &tsbridge.ConfigOptions{
 		Filename:             os.Getenv("CONFIG_FILE"),
 		MinPointAge:          minPointAge,
 		CounterResetInterval: resetInterval,
+		Storage:              storageManager,
 	})
 }
 
@@ -168,4 +181,18 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 func logAndReturnError(ctx context.Context, w http.ResponseWriter, err error) {
 	log.Errorf(ctx, err.Error())
 	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+// Helper function to load the correct storage manager depending on settings
+func loadStorageEngine() (storage.Manager, error) {
+	storageEngine := os.Getenv("STORAGE_ENGINE")
+	switch storageEngine {
+	case "datastore":
+		return datastore.New(), nil
+	case "":
+		fmt.Println("Storage engine not configured, defaulting to GAE datastore.")
+		return datastore.New(), nil
+	default:
+		return nil, fmt.Errorf("unknown storage engine selected: %s", storageEngine)
+	}
 }

@@ -28,7 +28,7 @@ import (
 
 	"github.com/google/ts-bridge/mocks"
 
-	"github.com/google/ts-bridge/record"
+	"github.com/google/ts-bridge/datastore"
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
@@ -98,21 +98,21 @@ func TestStackdriverDataErrors(t *testing.T) {
 	m.client.SetBaseUrl(server.URL)
 
 	// At this point HTTP server returns 404 to all requests, so we might as well test error handling.
-	_, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.DatastoreMetricRecord{})
+	_, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
 	if err == nil {
 		t.Error("expected an error when server returns 404")
 	}
 
 	// A query needs to return a single time series.
 	handler.filename = "multiple_ts.json"
-	_, _, err = m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.DatastoreMetricRecord{})
+	_, _, err = m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
 	if err == nil || !strings.Contains(err.Error(), "returned 2 time series") {
 		t.Errorf("expected StackdriverData error to say 'returned 2 time series'; got %v", err)
 	}
 
 	// No time series is not an error, however `ts` needs to be a 0-length slice.
 	handler.filename = "no_ts.json"
-	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.DatastoreMetricRecord{})
+	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
 	if err != nil {
 		t.Errorf("expected no errors when query returns no timeseries'; got %v", err)
 	}
@@ -188,7 +188,7 @@ func TestStackdriverDataResponses(t *testing.T) {
 			}
 			m.client.SetBaseUrl(server.URL)
 
-			desc, ts, err := m.StackdriverData(testCtx, time.Unix(1515000000, 0), &record.DatastoreMetricRecord{})
+			desc, ts, err := m.StackdriverData(testCtx, time.Unix(1515000000, 0), &datastore.StoredMetricRecord{})
 			if err != nil {
 				t.Errorf("expected no errors; got %v", err)
 			}
@@ -228,7 +228,7 @@ func TestPointsGetFilteredOut(t *testing.T) {
 		m, _ := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, tt.minPointAge, time.Hour)
 		m.client.SetBaseUrl(server.URL)
 
-		_, ts, err := m.StackdriverData(testCtx, tt.lastPoint, &record.DatastoreMetricRecord{})
+		_, ts, err := m.StackdriverData(testCtx, tt.lastPoint, &datastore.StoredMetricRecord{})
 		if err != nil {
 			t.Errorf("expected no errors; got %v", err)
 		}
@@ -276,7 +276,7 @@ func TestStackdriverDataUnits(t *testing.T) {
 		{"no_unit.json", ""},
 	} {
 		handler.filename = tt.filename
-		desc, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &record.DatastoreMetricRecord{})
+		desc, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
 		if err != nil {
 			t.Errorf("%s: expected no errors; got %v", tt.filename, err)
 		}

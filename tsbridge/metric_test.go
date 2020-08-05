@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/mocks"
-	"github.com/google/ts-bridge/record"
 
 	"github.com/golang/mock/gomock"
 	"go.opencensus.io/stats/view"
@@ -120,11 +120,11 @@ func TestMetricUpdate(t *testing.T) {
 			mockSource.EXPECT().Query()
 			mockSource.EXPECT().StackdriverName().MaxTimes(100).Return("sd-metricname")
 
-			m, err := NewMetric(testCtx, "metricname", mockSource, "sd-project")
+			m, err := NewMetric(testCtx, "metricname", mockSource, "sd-project", datastore.New())
 			if err != nil {
 				t.Fatalf("error while creating metric: %v", err)
 			}
-			rec := m.Record.(*record.DatastoreMetricRecord)
+			rec := m.Record.(*datastore.StoredMetricRecord)
 			rec.LastStatus = "OK: all good"
 			rec.LastAttempt = time.Now().Add(-time.Hour)
 
@@ -160,7 +160,7 @@ func TestMetricImportLatencyMetric(t *testing.T) {
 	mockSource.EXPECT().Query()
 	mockSource.EXPECT().StackdriverName().MaxTimes(100).Return("sd-metricname")
 
-	m, err := NewMetric(testCtx, "metricname", mockSource, "sd-project")
+	m, err := NewMetric(testCtx, "metricname", mockSource, "sd-project", datastore.New())
 	if err != nil {
 		t.Fatalf("error while creating metric: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestUpdateAllMetrics(t *testing.T) {
 				src.EXPECT().StackdriverName().MaxTimes(100).Return(name)
 				metric := &Metric{
 					Name:   name,
-					Record: &record.DatastoreMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+					Record: &datastore.StoredMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
 					Source: src,
 				}
 				config.metrics = append(config.metrics, metric)
@@ -269,7 +269,7 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 			&Metric{
 				// Having an emoji symbol in metric name should produce an error while defining an OpenCensus tag.
 				Name:   "invalid metric name 🥒",
-				Record: &record.DatastoreMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+				Record: &datastore.StoredMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
 				Source: src,
 			},
 		},

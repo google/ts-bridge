@@ -19,11 +19,10 @@ package tsbridge
 import (
 	"context"
 	"fmt"
+	"github.com/google/ts-bridge/storage"
 	"net/url"
 	"sync"
 	"time"
-
-	"github.com/google/ts-bridge/record"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -36,7 +35,7 @@ type Metric struct {
 	Name      string
 	Source    SourceMetric
 	SDProject string
-	Record    record.MetricRecord
+	Record    storage.MetricRecord
 }
 
 //go:generate mockgen -destination=../mocks/mock_source_metric.go -package=mocks github.com/google/ts-bridge/tsbridge SourceMetric
@@ -45,7 +44,7 @@ type Metric struct {
 type SourceMetric interface {
 	StackdriverName() string
 	Query() string
-	StackdriverData(ctx context.Context, since time.Time, record record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error)
+	StackdriverData(ctx context.Context, since time.Time, record storage.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error)
 }
 
 //go:generate mockgen -destination=../mocks/mock_sd_adapter.go -package=mocks github.com/google/ts-bridge/tsbridge StackdriverAdapter
@@ -98,8 +97,8 @@ func UpdateAllMetrics(ctx context.Context, c *Config, sd StackdriverAdapter, par
 }
 
 // NewMetric creates a Metric based on a SourceMetric and the destination Stackdriver project.
-func NewMetric(ctx context.Context, name string, s SourceMetric, sdProject string) (*Metric, error) {
-	r, err := record.NewDatastoreMetricRecord(ctx, name, s.Query())
+func NewMetric(ctx context.Context, name string, s SourceMetric, sdProject string, storage storage.Manager) (*Metric, error) {
+	r, err := storage.NewMetricRecord(ctx, name, s.Query())
 	if err != nil {
 		return nil, err
 	}

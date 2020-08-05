@@ -17,10 +17,9 @@ package datadog
 import (
 	"context"
 	"fmt"
+	"github.com/google/ts-bridge/storage"
 	"strings"
 	"time"
-
-	"github.com/google/ts-bridge/record"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -77,7 +76,7 @@ func (m *Metric) Query() string {
 
 // StackdriverData issues a Datadog query, returning metric descriptor and time series data.
 // Time series data will include points after the given lastPoint timestamp.
-func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
+func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec storage.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
 	m.client.HttpClient = urlfetch.Client(ctx)
 
 	// Datadog's `from` parameter is inclusive, so we set it to 1 second after the latest point we've got.
@@ -114,7 +113,7 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec r
 // counterStartTime returns the start time for a cumulative metric. It's used as
 // the `from` parameter while issuing Datadog queries, and also as the `start
 // time` field in points reported for this cumulative metric to SD.
-func (m *Metric) counterStartTime(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (time.Time, error) {
+func (m *Metric) counterStartTime(ctx context.Context, lastPoint time.Time, rec storage.MetricRecord) (time.Time, error) {
 	// Start time needs to be reset regularly, since otherwise we will be querying
 	// Datadog for a time window large enough for aggregation to kick in.
 	if time.Now().Sub(rec.GetCounterStartTime()) > m.counterResetInterval {

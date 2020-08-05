@@ -22,6 +22,9 @@ env_variables:
   # to avoid aggregation. This parameter defines how often a new start time is chosen. 30min should be sufficient for
   # metrics that have a point every 10 seconds.
   COUNTER_RESET_INTERVAL: "30m"
+  # Select storage engine to keep the metrics metadata in, currently supported options:
+  # "datastore" - AppEngine Datastore
+  STORAGE_ENGINE: "datastore"
   # Uncomment to enable the status web page.
   #ENABLE_STATUS_PAGE: "yes"
 

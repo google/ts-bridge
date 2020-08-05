@@ -6,11 +6,12 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+	time "time"
+
 	gomock "github.com/golang/mock/gomock"
 	metric "google.golang.org/genproto/googleapis/api/metric"
 	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
-	reflect "reflect"
-	time "time"
 )
 
 // MockStackdriverAdapter is a mock of StackdriverAdapter interface.
