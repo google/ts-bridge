@@ -16,6 +16,7 @@ package tsbridge
 
 import (
 	"context"
+	"github.com/google/ts-bridge/datastore"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -30,7 +31,7 @@ func fakeAppIDFunc(app string) func(context.Context) string {
 }
 
 func TestNewConfigSimple(t *testing.T) {
-	cfg, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml"})
+	cfg, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: datastore.New()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +70,7 @@ func TestNewConfigFailedValidation(t *testing.T) {
 		{"invalid_name.yaml", "configuration file validation error"},
 		{"no_influxdb_query.yaml", "configuration file validation error"},
 	} {
-		_, err := NewConfig(testCtx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename)})
+		_, err := NewConfig(testCtx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename), Storage: datastore.New()})
 		if !strings.Contains(err.Error(), tt.wantErr) {
 			t.Errorf("expected NewConfig error '%v'; got '%v'", tt.wantErr, err)
 		}

@@ -6,12 +6,13 @@ package mocks
 
 import (
 	context "context"
-	gomock "github.com/golang/mock/gomock"
-	record "github.com/google/ts-bridge/record"
-	metric "google.golang.org/genproto/googleapis/api/metric"
-	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
 	reflect "reflect"
 	time "time"
+
+	gomock "github.com/golang/mock/gomock"
+	storage "github.com/google/ts-bridge/storage"
+	metric "google.golang.org/genproto/googleapis/api/metric"
+	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
 // MockSourceMetric is a mock of SourceMetric interface.
@@ -52,7 +53,7 @@ func (mr *MockSourceMetricMockRecorder) Query() *gomock.Call {
 }
 
 // StackdriverData mocks base method.
-func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 record.MetricRecord) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
+func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 storage.MetricRecord) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StackdriverData", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*metric.MetricDescriptor)

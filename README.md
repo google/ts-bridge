@@ -209,6 +209,9 @@ the `env_variables` section of `app/app.yaml`.
     This parameter defines how often a new start time is chosen, and defaults
     to 30 minutes. See [Cumulative metrics](#cumulative-metrics) section below
     for more details.
+*   `STORAGE_ENGINE`: storage engine to use for storing metric metadata, 
+    defaults to `datastore`.  
+    `datastore` - use AppEngine Datastore
 *   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
     (disabled by default).
 

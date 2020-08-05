@@ -19,6 +19,7 @@ package tsbridge
 import (
 	"context"
 	"fmt"
+	"github.com/google/ts-bridge/storage"
 	"io/ioutil"
 	"time"
 
@@ -81,6 +82,7 @@ type ConfigOptions struct {
 	Filename             string
 	MinPointAge          time.Duration
 	CounterResetInterval time.Duration
+	Storage              storage.Manager
 }
 
 // NewConfig reads and validates a configuration file, returning the Config struct.
@@ -120,7 +122,7 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 		if !ok {
 			return fmt.Errorf("destination '%s' not found", dest)
 		}
-		metric, err := NewMetric(ctx, name, sourceMetric, project)
+		metric, err := NewMetric(ctx, name, sourceMetric, project, opts.Storage)
 		if err != nil {
 			return fmt.Errorf("cannot create metric '%s': %v", name, err)
 		}

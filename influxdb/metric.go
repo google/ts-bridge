@@ -18,9 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/ts-bridge/storage"
 	"time"
-
-	"github.com/google/ts-bridge/record"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/influxdata/influxdb1-client/models"
@@ -64,7 +63,7 @@ func (m *Metric) Query() string {
 	return m.config.Query
 }
 
-func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
+func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec storage.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
 	c, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr:     m.config.Endpoint,
 		Username: m.config.Username,
@@ -134,7 +133,7 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec r
 // counterStartTime returns the start time for a cumulative metric. It's used as
 // the from time for InfluxQL queries, and also as the `start time` field in
 // points reported for this cumulative metric to SD.
-func (m *Metric) counterStartTime(ctx context.Context, lastPoint time.Time, rec record.MetricRecord) (time.Time, error) {
+func (m *Metric) counterStartTime(ctx context.Context, lastPoint time.Time, rec storage.MetricRecord) (time.Time, error) {
 	// Start time needs to be reset regularly, since otherwise we will be
 	// querying InfluxDB for a time window too large to efficiently process.
 	if timeNow().Sub(rec.GetCounterStartTime()) > m.counterResetInterval {

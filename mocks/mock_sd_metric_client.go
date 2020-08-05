@@ -6,10 +6,11 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	metric "google.golang.org/genproto/googleapis/api/metric"
 	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
-	reflect "reflect"
 )
 
 // MockMetricClient is a mock of MetricClient interface.
