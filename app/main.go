@@ -64,6 +64,7 @@ func sync(w http.ResponseWriter, r *http.Request) {
 		logAndReturnError(ctx, w, err)
 		return
 	}
+	defer storage.Close()
 
 	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
@@ -116,6 +117,7 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		logAndReturnError(ctx, w, err)
 		return
 	}
+	defer storage.Close()
 
 	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
@@ -132,6 +134,7 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Errorf("could not load storage engine: %v", err)
 	}
+	defer storage.Close()
 
 	if err := storageManager.CleanupRecords(ctx, metricNames); err != nil {
 		logAndReturnError(ctx, w, err)
@@ -152,6 +155,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 		logAndReturnError(ctx, w, err)
 		return
 	}
+	defer storage.Close()
 
 	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {

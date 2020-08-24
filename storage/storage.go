@@ -27,6 +27,7 @@ import (
 type Manager interface {
 	NewMetricRecord(ctx context.Context, name, query string) (MetricRecord, error)
 	CleanupRecords(ctx context.Context, valid []string) error
+	Close() error
 }
 
 //go:generate mockgen -destination=../mocks/mock_metric_record.go -package=mocks github.com/google/ts-bridge/storage MetricRecord

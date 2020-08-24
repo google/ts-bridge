@@ -64,3 +64,8 @@ func (d *Manager) CleanupRecords(ctx context.Context, valid []string) error {
 	}
 	return nil
 }
+
+// Datastore doesn't need to be closed, this function exists for compatibility
+func (d *Manager) Close() error {
+	return nil
+}
