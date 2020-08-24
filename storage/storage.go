@@ -21,6 +21,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen -destination=../mocks/mock_storage_manager.go -package=mocks github.com/google/ts-bridge/storage Manager
+
 // StorageManager interface implemented by associated Manager
 type Manager interface {
 	NewMetricRecord(ctx context.Context, name, query string) (MetricRecord, error)
