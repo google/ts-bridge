@@ -59,7 +59,13 @@ func sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := newConfig(ctx)
+	storage, err := loadStorageEngine()
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+
+	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -105,7 +111,13 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := newConfig(ctx)
+	storage, err := loadStorageEngine()
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+
+	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -134,7 +146,14 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := appengine.NewContext(r)
-	config, err := newConfig(ctx)
+
+	storage, err := loadStorageEngine()
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+
+	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -152,7 +171,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 // newConfig initializes and returns tsbridge config.
-func newConfig(ctx context.Context) (*tsbridge.Config, error) {
+func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.Config, error) {
 	minPointAge, err := time.ParseDuration(os.Getenv("MIN_POINT_AGE"))
 	if err != nil {
 		return nil, fmt.Errorf("Could not parse MIN_POINT_AGE: %v", err)
@@ -163,7 +182,6 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 		return nil, fmt.Errorf("Could not parse COUNTER_RESET_INTERVAL: %v", err)
 	}
 
-	storageManager, err := loadStorageEngine()
 	if err != nil {
 		return nil, fmt.Errorf("Could not load storage engine: %v", err)
 	}
@@ -172,7 +190,7 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 		Filename:             os.Getenv("CONFIG_FILE"),
 		MinPointAge:          minPointAge,
 		CounterResetInterval: resetInterval,
-		Storage:              storageManager,
+		Storage:              storage,
 	})
 }
 
