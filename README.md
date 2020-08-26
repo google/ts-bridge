@@ -74,7 +74,7 @@ using a git repository and
 1.  Ensure that you either have **Owner** permissions for the whole Cloud
     project, or at minimum the **Monitoring Editor** role
 1.  Create a ts-bridge config with no metrics
-    *   `cd $GOPATH/src/github.com/google/ts-bridge/app; cp metrics.yaml.example metrics.yaml`
+    *   `cd $GOPATH/src/github.com/google/ts-bridge; cp metrics.yaml.example metrics.yaml`
     *   Edit the yaml file, remove the datadog\_metrics and influxdb\_metrics
         sample content, and copy in the name of the project you just created
         into the stackdriver\_destinations section.

@@ -164,7 +164,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	funcMap := template.FuncMap{"humantime": humanize.Time}
-	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("index.html")
+	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("app/index.html")
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
