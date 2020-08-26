@@ -25,7 +25,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	log "github.com/sirupsen/logrus"
 	ddapi "github.com/zorkian/go-datadog-api"
-	"google.golang.org/appengine/urlfetch"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	"google.golang.org/genproto/googleapis/api/monitoredres"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
@@ -77,8 +76,6 @@ func (m *Metric) Query() string {
 // StackdriverData issues a Datadog query, returning metric descriptor and time series data.
 // Time series data will include points after the given lastPoint timestamp.
 func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec storage.MetricRecord) (*metricpb.MetricDescriptor, []*monitoringpb.TimeSeries, error) {
-	m.client.HttpClient = urlfetch.Client(ctx)
-
 	// Datadog's `from` parameter is inclusive, so we set it to 1 second after the latest point we've got.
 	from := lastPoint.Add(time.Second)
 	if m.config.Cumulative {
