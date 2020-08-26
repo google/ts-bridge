@@ -27,7 +27,7 @@ import (
 	"github.com/google/ts-bridge/influxdb"
 
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 	validator "gopkg.in/validator.v2"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -157,7 +157,7 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 		}
 	}
 
-	log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
+	log.WithContext(ctx).Debugf("Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
 	return c, nil
 }
 

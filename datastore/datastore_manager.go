@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/google/ts-bridge/storage"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 )
 
 // New initializes the Manager struct implementing a generic storage.Manager interface
@@ -52,11 +52,11 @@ func (d *Manager) CleanupRecords(ctx context.Context, valid []string) error {
 	if _, err := q.GetAll(ctx, &records); err != nil {
 		return fmt.Errorf("could not list metric records: %v", err)
 	}
-	log.Infof(ctx, "%d metrics configured, %d metric records found in Datastore", len(valid), len(records))
+	log.WithContext(ctx).Infof("%d metrics configured, %d metric records found in Datastore", len(valid), len(records))
 	for _, r := range records {
 		if !existing[r.Name] {
-			log.Infof(ctx, "deleting obsolete metric record for %s", r.Name)
-			err := datastore.Delete(ctx, r.key(ctx))
+			log.WithContext(ctx).Infof("deleting obsolete metric record for %s", r.Name)
+			err := d.Client.Delete(ctx, r.key(ctx))
 			if err != nil {
 				return fmt.Errorf("could not delete metric record %v: %v", r.Name, err)
 			}

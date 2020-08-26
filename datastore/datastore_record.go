@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -75,7 +75,7 @@ func (m *StoredMetricRecord) SetCounterStartTime(ctx context.Context, start time
 
 // UpdateError updates metric status in Datastore with a given error message.
 func (m *StoredMetricRecord) UpdateError(ctx context.Context, e error) error {
-	log.Errorf(ctx, "%s: %s", m.Name, e)
+	log.WithContext(ctx).Errorf("%s: %s", m.Name, e)
 	m.LastStatus = fmt.Sprintf("ERROR: %s", e)
 	m.LastAttempt = time.Now()
 	return m.write(ctx)
@@ -83,7 +83,7 @@ func (m *StoredMetricRecord) UpdateError(ctx context.Context, e error) error {
 
 // UpdateSuccess updates metric status in Datastore with a given message.
 func (m *StoredMetricRecord) UpdateSuccess(ctx context.Context, points int, msg string) error {
-	log.Infof(ctx, "%s: %s", m.Name, msg)
+	log.WithContext(ctx).Infof("%s: %s", m.Name, msg)
 	m.LastStatus = fmt.Sprintf("OK: %s", msg)
 	m.LastAttempt = time.Now()
 	if points > 0 {

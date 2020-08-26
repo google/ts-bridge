@@ -23,8 +23,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	log "github.com/sirupsen/logrus"
 	ddapi "github.com/zorkian/go-datadog-api"
-	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	"google.golang.org/genproto/googleapis/api/monitoredres"
@@ -94,14 +94,14 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec s
 		return nil, nil, err
 	}
 	if len(series) == 0 {
-		log.Infof(ctx, "Datadog query '%s' returned no time series", m.config.Query)
+		log.WithContext(ctx).Infof("Datadog query '%s' returned no time series", m.config.Query)
 		return nil, nil, nil
 	} else if len(series) > 1 {
 		return nil, nil, fmt.Errorf("Datadog query '%s' returned %d time series", m.config.Query, len(series))
 	}
 
 	points, err := m.filterPoints(lastPoint, series[0].Points)
-	log.Debugf(ctx, "Got %d points (%d after filtering) in response to the Datadog query '%s'", len(series[0].Points), len(points), m.config.Query)
+	log.WithContext(ctx).Debugf("Got %d points (%d after filtering) in response to the Datadog query '%s'", len(series[0].Points), len(points), m.config.Query)
 
 	startTime, err := ptypes.TimestampProto(from)
 	if err != nil {
@@ -140,7 +140,7 @@ func (m *Metric) counterStartTime(ctx context.Context, lastPoint time.Time, rec 
 		if err := rec.SetCounterStartTime(ctx, start); err != nil {
 			return time.Time{}, fmt.Errorf("Could not set counter start time: %v", err)
 		}
-		log.Infof(ctx, "Counter start time for %s has been reset to %v", m.Name, start)
+		log.WithContext(ctx).Infof("Counter start time for %s has been reset to %v", m.Name, start)
 	}
 	return rec.GetCounterStartTime(), nil
 }

@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
@@ -117,13 +117,13 @@ func (a *Adapter) setDescriptor(ctx context.Context, project, name string, desc 
 		return nil
 	}
 	if current != nil {
-		log.Infof(ctx, "Deleting existing metric descriptor (%v) which is different from desired (%v)", current, desc)
+		log.WithContext(ctx).Infof("Deleting existing metric descriptor (%v) which is different from desired (%v)", current, desc)
 		err = a.c.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{Name: current.Name})
 		if err != nil {
 			return fmt.Errorf("DeleteMetricDescriptor error: %s", err)
 		}
 	}
-	log.Infof(ctx, "Creating a new metric descriptor: %v", desc.Name)
+	log.WithContext(ctx).Infof("Creating a new metric descriptor: %v", desc.Name)
 	_, err = a.c.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
 		Name:             fmt.Sprintf("projects/%s", project),
 		MetricDescriptor: desc,
@@ -144,7 +144,7 @@ func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (ti
 		return latest, err
 	}
 	if desc == nil {
-		log.Debugf(ctx, "No metric descriptor found for %s", name)
+		log.WithContext(ctx).Debugf("No metric descriptor found for %s", name)
 		return latest, nil
 	}
 
@@ -154,11 +154,11 @@ func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (ti
 	}
 
 	if len(series) == 0 {
-		log.Debugf(ctx, "No timeseries found for %s", name)
+		log.WithContext(ctx).Debugf("No timeseries found for %s", name)
 		return latest, nil
 	}
 	if len(series) > 1 {
-		log.Debugf(ctx, "Several timeseries found for %s: %v", name, series)
+		log.WithContext(ctx).Debugf("Several timeseries found for %s: %v", name, series)
 		return latest, fmt.Errorf("Found several time series with the same name: %v", series)
 	}
 
@@ -172,7 +172,7 @@ func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (ti
 		}
 	}
 
-	log.Debugf(ctx, "Latest point found for %s is %v", name, latest)
+	log.WithContext(ctx).Debugf("Latest point found for %s is %v", name, latest)
 	return latest, nil
 }
 

@@ -32,7 +32,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -201,7 +201,7 @@ func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.C
 // Since some URLs are triggered by App Engine cron, error messages returned in HTTP response
 // might not be visible to humans. We need to log them as well, and this helper function does that.
 func logAndReturnError(ctx context.Context, w http.ResponseWriter, err error) {
-	log.Errorf(ctx, err.Error())
+	log.WithContext(ctx).WithError(err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
@@ -212,8 +212,8 @@ func loadStorageEngine() (storage.Manager, error) {
 	case "datastore":
 		return datastore.New(), nil
 	case "":
-		fmt.Println("Storage engine not configured, defaulting to GAE datastore.")
-		return datastore.New(), nil
+		log.Warn("Storage engine not configured, defaulting to GAE datastore.")
+		return datastore.New(ctx), nil
 	default:
 		return nil, fmt.Errorf("unknown storage engine selected: %s", storageEngine)
 	}
