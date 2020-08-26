@@ -24,9 +24,9 @@ import (
 	"google.golang.org/appengine"
 )
 
-func fakeAppIDFunc(app string) func(context.Context) string {
-	return func(ctx context.Context) string {
-		return app
+func setProjectID(projectID string) {
+	if err := os.Setenv("GOOGLE_CLOUD_PROJECT", projectID); err != nil {
+		fmt.Errorf("couldn't set env GOOGLE_CLOUD_PROJECT: %v", err)
 	}
 }
 
@@ -46,16 +46,16 @@ func TestNewConfigSimple(t *testing.T) {
 	}
 
 	// project_id parameter is required when app id cannot be detected.
-	for _, appid := range []string{"", "None"} {
-		appIDFunc = fakeAppIDFunc(appid)
+	for _, projectid := range []string{""} {
+		setProjectID(projectid)
 		_, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml"})
 		if !strings.Contains(err.Error(), "please provide project_id for") {
 			t.Errorf("passing project_id should be required")
 		}
 	}
 
-	// restore original appIDFunc.
-	appIDFunc = appengine.AppID
+	// restore original test projectID
+	setProjectID("testapp")
 }
 
 func TestNewConfigFailedValidation(t *testing.T) {
