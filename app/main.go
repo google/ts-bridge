@@ -39,7 +39,16 @@ func main() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/sync", sync)
 	http.HandleFunc("/cleanup", cleanup)
-	appengine.Main()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Infof("Defaulting to port %s", port)
+	}
+
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatalf("unable to start serving: %v", err)
+	}
 }
 
 // sync updates all configured metrics. It's triggered by App Engine Cron.
