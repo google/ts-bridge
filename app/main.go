@@ -31,7 +31,6 @@ import (
 	"github.com/google/ts-bridge/tsbridge"
 
 	"github.com/dustin/go-humanize"
-	"google.golang.org/appengine"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -53,7 +52,7 @@ func main() {
 
 // sync updates all configured metrics. It's triggered by App Engine Cron.
 func sync(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := r.Context()
 
 	t, err := time.ParseDuration(os.Getenv("UPDATE_TIMEOUT"))
 	if err != nil {
@@ -114,7 +113,7 @@ func sync(w http.ResponseWriter, r *http.Request) {
 
 // cleanup removes obsolete metric records. It is triggered by App Engine Cron.
 func cleanup(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := r.Context()
 
 	if isAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
 		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
@@ -157,7 +156,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := appengine.NewContext(r)
+	ctx := r.Context()
 
 	storage, err := loadStorageEngine()
 	if err != nil {
