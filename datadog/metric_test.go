@@ -26,30 +26,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/ts-bridge/mocks"
-
 	"github.com/google/ts-bridge/datastore"
+	"github.com/google/ts-bridge/mocks"
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	ddapi "github.com/zorkian/go-datadog-api"
-	"google.golang.org/appengine/aetest"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
-var testCtx context.Context
-
 func TestMain(m *testing.M) {
-	var done func()
-	var err error
-	testCtx, done, err = aetest.NewContext()
-	if err != nil {
-		panic(err)
-	}
-
+	ctx, cancel := context.WithCancel(context.Background())
+	// Save the emulator's quit channel.
+	quit := datastore.Emulator(ctx)
 	code := m.Run()
-	done()
+	cancel()
+	// Wait for channel close before exiting the test suite
+	<-quit
 	os.Exit(code)
 }
 
@@ -92,27 +86,29 @@ func makeTestServer(filename string) (*fixtureHandler, *httptest.Server) {
 }
 
 func TestStackdriverDataErrors(t *testing.T) {
+	ctx := context.Background()
+	storage := datastore.New(ctx)
+
 	handler, server := makeTestServer("")
 	defer server.Close()
 	m, _ := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Second, time.Hour)
 	m.client.SetBaseUrl(server.URL)
 
 	// At this point HTTP server returns 404 to all requests, so we might as well test error handling.
-	_, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
-	if err == nil {
+	if _, _, err := m.StackdriverData(ctx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{Storage: storage}); err == nil {
 		t.Error("expected an error when server returns 404")
 	}
 
 	// A query needs to return a single time series.
 	handler.filename = "multiple_ts.json"
-	_, _, err = m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
+	_, _, err := m.StackdriverData(ctx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{Storage: storage})
 	if err == nil || !strings.Contains(err.Error(), "returned 2 time series") {
 		t.Errorf("expected StackdriverData error to say 'returned 2 time series'; got %v", err)
 	}
 
 	// No time series is not an error, however `ts` needs to be a 0-length slice.
 	handler.filename = "no_ts.json"
-	_, ts, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
+	_, ts, err := m.StackdriverData(ctx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{Storage: storage})
 	if err != nil {
 		t.Errorf("expected no errors when query returns no timeseries'; got %v", err)
 	}
@@ -122,6 +118,9 @@ func TestStackdriverDataErrors(t *testing.T) {
 }
 
 func TestStackdriverDataResponses(t *testing.T) {
+	ctx := context.Background()
+	storage := datastore.New(ctx)
+
 	for _, tt := range []struct {
 		filename string
 		metric   *MetricConfig
@@ -188,7 +187,7 @@ func TestStackdriverDataResponses(t *testing.T) {
 			}
 			m.client.SetBaseUrl(server.URL)
 
-			desc, ts, err := m.StackdriverData(testCtx, time.Unix(1515000000, 0), &datastore.StoredMetricRecord{})
+			desc, ts, err := m.StackdriverData(ctx, time.Unix(1515000000, 0), &datastore.StoredMetricRecord{Storage: storage})
 			if err != nil {
 				t.Errorf("expected no errors; got %v", err)
 			}
@@ -211,6 +210,8 @@ func TestStackdriverDataResponses(t *testing.T) {
 }
 
 func TestPointsGetFilteredOut(t *testing.T) {
+	ctx := context.Background()
+
 	_, server := makeTestServer("good.json")
 	defer server.Close()
 
@@ -228,7 +229,7 @@ func TestPointsGetFilteredOut(t *testing.T) {
 		m, _ := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, tt.minPointAge, time.Hour)
 		m.client.SetBaseUrl(server.URL)
 
-		_, ts, err := m.StackdriverData(testCtx, tt.lastPoint, &datastore.StoredMetricRecord{})
+		_, ts, err := m.StackdriverData(ctx, tt.lastPoint, &datastore.StoredMetricRecord{})
 		if err != nil {
 			t.Errorf("expected no errors; got %v", err)
 		}
@@ -262,6 +263,8 @@ func TestFilterPoints(t *testing.T) {
 }
 
 func TestStackdriverDataUnits(t *testing.T) {
+	ctx := context.Background()
+
 	handler, server := makeTestServer("")
 	defer server.Close()
 	m, _ := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Second, time.Hour)
@@ -276,7 +279,7 @@ func TestStackdriverDataUnits(t *testing.T) {
 		{"no_unit.json", ""},
 	} {
 		handler.filename = tt.filename
-		desc, _, err := m.StackdriverData(testCtx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
+		desc, _, err := m.StackdriverData(ctx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
 		if err != nil {
 			t.Errorf("%s: expected no errors; got %v", tt.filename, err)
 		}
@@ -302,6 +305,8 @@ func TestMetricConfig(t *testing.T) {
 }
 
 func TestCounterStartTime(t *testing.T) {
+	ctx := context.Background()
+
 	t5minAgo := time.Now().Add(-5 * time.Minute)
 	t4min59secAgo := time.Now().Add(-5*time.Minute + time.Second)
 	t30minAgo := time.Now().Add(-30 * time.Minute)
@@ -333,7 +338,7 @@ func TestCounterStartTime(t *testing.T) {
 					return nil
 				})
 
-			got, err := m.counterStartTime(testCtx, tt.lastPoint, r)
+			got, err := m.counterStartTime(ctx, tt.lastPoint, r)
 			if err != nil {
 				t.Errorf("unexpected error while calling counterStartTime: %v", err)
 			}

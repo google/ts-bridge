@@ -21,28 +21,16 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/aetest"
-	"google.golang.org/appengine/datastore"
 )
 
-var testCtx context.Context
-
 func TestMain(m *testing.M) {
-	// Use strongly consistent datastore in tests to verify metric record cleanup.
-	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
-	if err != nil {
-		panic(err)
-	}
-	req, err := inst.NewRequest("GET", "/", nil)
-	if err != nil {
-		panic(err)
-	}
-	testCtx = appengine.NewContext(req)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	// Save the emulator's quit channel.
+	quit := Emulator(ctx)
 	code := m.Run()
-	inst.Close()
+	cancel()
+	// Wait for channel close before exiting the test suite
+	<-quit
 	os.Exit(code)
 }
 
@@ -58,6 +46,10 @@ var metricRecordTests = []struct {
 }
 
 func TestDatastoreMetricRecords(t *testing.T) {
+	ctx := context.Background()
+
+	storageManager := New(ctx)
+
 	for _, tt := range metricRecordTests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
@@ -69,22 +61,24 @@ func TestDatastoreMetricRecords(t *testing.T) {
 				LastStatus:  "OK: all good",
 				LastAttempt: time.Now().Add(-time.Hour),
 				LastUpdate:  time.Now().Add(-time.Hour),
+				Storage:     storageManager,
 			}
-			if err := r.write(testCtx); err != nil {
+			if err := r.write(ctx); err != nil {
 				t.Fatalf("error while initializing StoredMetricRecord: %v", err)
 			}
 
 			if tt.success {
-				err = r.UpdateSuccess(testCtx, tt.points, "Test Message")
+				err = r.UpdateSuccess(ctx, tt.points, "Test Message")
 			} else {
-				err = r.UpdateError(testCtx, fmt.Errorf("Test Message"))
+				err = r.UpdateError(ctx, fmt.Errorf("Test Message"))
 			}
+			fmt.Println(r.LastUpdate)
 			if err != nil {
 				t.Fatalf("error while updating StoredMetricRecord: %v", err)
 			}
 
-			rr := StoredMetricRecord{}
-			if err := datastore.Get(testCtx, r.key(testCtx), &rr); err != nil {
+			rr := StoredMetricRecord{Storage: storageManager}
+			if err := rr.Storage.Client.Get(ctx, r.key(ctx), &rr); err != nil {
 				t.Fatalf("error while fetching StoredMetricRecord: %v", err)
 			}
 

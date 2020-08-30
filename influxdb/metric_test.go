@@ -31,23 +31,18 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/appengine/aetest"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
 
-var testCtx context.Context
-
 func TestMain(m *testing.M) {
-	var done func()
-	var err error
-	testCtx, done, err = aetest.NewContext()
-	if err != nil {
-		panic(err)
-	}
-
+	ctx, cancel := context.WithCancel(context.Background())
+	// Save the emulator's quit channel.
+	quit := datastore.Emulator(ctx)
 	code := m.Run()
-	done()
+	cancel()
+	// Wait for channel close before exiting the test suite
+	<-quit
 	os.Exit(code)
 }
 
@@ -147,6 +142,8 @@ func getParam(params url.Values, key string) string {
 }
 
 func TestStackdriverDataQuery(t *testing.T) {
+	ctx := context.Background()
+
 	startTime := time.Unix(0, 600000000000)                           // (600s)
 	lastPoint := time.Unix(0, 800000000000)                           // (800s)
 	timeNow = func() time.Time { return time.Unix(0, 1000000000000) } // (1000s)
@@ -262,7 +259,7 @@ func TestStackdriverDataQuery(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			m.StackdriverData(testCtx, lastPoint, r)
+			m.StackdriverData(ctx, lastPoint, r)
 			if !requestHandled {
 				t.Fatalf("StackdriverData did not send InfluxDB request")
 			}
@@ -271,6 +268,9 @@ func TestStackdriverDataQuery(t *testing.T) {
 }
 
 func TestStackdriverDataErrors(t *testing.T) {
+	ctx := context.Background()
+	storage := datastore.New(ctx)
+
 	handler, server := makeTestServer("")
 	defer server.Close()
 
@@ -319,7 +319,7 @@ func TestStackdriverDataErrors(t *testing.T) {
 	} {
 		t.Run(tt.description, func(t *testing.T) {
 			handler.filename = tt.filename
-			_, ts, err := m.StackdriverData(testCtx, time.Now(), &datastore.StoredMetricRecord{})
+			_, ts, err := m.StackdriverData(ctx, time.Now(), &datastore.StoredMetricRecord{Storage: storage})
 			if err != nil {
 				if tt.wantInErr == "" {
 					t.Fatalf("unexpected StackdriverData error: %v", err)
@@ -341,6 +341,8 @@ func TestStackdriverDataErrors(t *testing.T) {
 }
 
 func TestStackdriverDataGaugeResponse(t *testing.T) {
+	ctx := context.Background()
+
 	_, server := makeTestServer("good.json")
 	defer server.Close()
 
@@ -351,7 +353,7 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 	m, _ := NewSourceMetric("metricname", c, time.Second, time.Hour)
 	// The lastTime time passed here is irrelevant, as we stubbed what the
 	// query returns.
-	desc, ts, err := m.StackdriverData(testCtx, time.Now(), &datastore.StoredMetricRecord{})
+	desc, ts, err := m.StackdriverData(ctx, time.Now(), &datastore.StoredMetricRecord{})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
@@ -407,6 +409,8 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 }
 
 func TestStackdriverDataTimeAggGaugeResponse(t *testing.T) {
+	ctx := context.Background()
+
 	_, server := makeTestServer("good.json")
 	defer server.Close()
 
@@ -424,7 +428,7 @@ func TestStackdriverDataTimeAggGaugeResponse(t *testing.T) {
 	// Influx query.
 	lastPoint := time.Unix(0, 1015000000000)                          // (1015s)
 	timeNow = func() time.Time { return time.Unix(0, 1035000000000) } // (1035s)
-	desc, ts, err := m.StackdriverData(testCtx, lastPoint, &datastore.StoredMetricRecord{})
+	desc, ts, err := m.StackdriverData(ctx, lastPoint, &datastore.StoredMetricRecord{})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
@@ -472,6 +476,8 @@ func TestStackdriverDataTimeAggGaugeResponse(t *testing.T) {
 }
 
 func TestStackdriverDataCumulativeResponse(t *testing.T) {
+	ctx := context.Background()
+
 	_, server := makeTestServer("good.json")
 	defer server.Close()
 
@@ -495,7 +501,7 @@ func TestStackdriverDataCumulativeResponse(t *testing.T) {
 		return startTime
 	})
 
-	desc, ts, err := m.StackdriverData(testCtx, lastPoint, r)
+	desc, ts, err := m.StackdriverData(ctx, lastPoint, r)
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
@@ -543,6 +549,8 @@ func TestStackdriverDataCumulativeResponse(t *testing.T) {
 }
 
 func TestStackdriverDataTimeAggCumulativeResponse(t *testing.T) {
+	ctx := context.Background()
+
 	_, server := makeTestServer("good.json")
 	defer server.Close()
 
@@ -568,7 +576,7 @@ func TestStackdriverDataTimeAggCumulativeResponse(t *testing.T) {
 		return startTime
 	})
 
-	desc, ts, err := m.StackdriverData(testCtx, lastPoint, r)
+	desc, ts, err := m.StackdriverData(ctx, lastPoint, r)
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
@@ -620,7 +628,7 @@ func TestStackdriverDataTimeAggCumulativeResponse(t *testing.T) {
 	// already seen cumulative intervals.
 	lastPoint = time.Unix(0, 1030000000000)                           // (1030s)
 	timeNow = func() time.Time { return time.Unix(0, 1065000000000) } // (1065s)
-	desc, ts, err = m.StackdriverData(testCtx, lastPoint, r)
+	desc, ts, err = m.StackdriverData(ctx, lastPoint, r)
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}

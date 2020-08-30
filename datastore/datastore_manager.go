@@ -17,23 +17,30 @@ package datastore
 import (
 	"context"
 	"fmt"
+	"os"
+
+	"cloud.google.com/go/datastore"
 	"github.com/google/ts-bridge/storage"
-	"google.golang.org/appengine/datastore"
 	log "github.com/sirupsen/logrus"
 )
 
 // New initializes the Manager struct implementing a generic storage.Manager interface
-func New() *Manager {
-	return &Manager{}
+func New(ctx context.Context) *Manager {
+	dsClient, err := datastore.NewClient(ctx, fetchProjectID())
+	if err != nil {
+		log.Fatalf("could not create datastore client: %v", err)
+	}
+	return &Manager{Client: dsClient}
 }
 
 // Manager struct implementing the storage.Manager interface
 type Manager struct {
+	Client *datastore.Client
 }
 
 // NewMetricRecord returns a Datastore-based metric record for a given metric name.
 func (d *Manager) NewMetricRecord(ctx context.Context, name, query string) (storage.MetricRecord, error) {
-	r := &StoredMetricRecord{Name: name}
+	r := &StoredMetricRecord{Name: name, Storage: d}
 	if err := r.load(ctx); err != nil {
 		return nil, err
 	}
@@ -49,7 +56,7 @@ func (d *Manager) CleanupRecords(ctx context.Context, valid []string) error {
 	}
 	q := datastore.NewQuery(kindName)
 	var records []*StoredMetricRecord
-	if _, err := q.GetAll(ctx, &records); err != nil {
+	if _, err := d.Client.GetAll(ctx, q, &records); err != nil {
 		return fmt.Errorf("could not list metric records: %v", err)
 	}
 	log.WithContext(ctx).Infof("%d metrics configured, %d metric records found in Datastore", len(valid), len(records))
@@ -65,7 +72,16 @@ func (d *Manager) CleanupRecords(ctx context.Context, valid []string) error {
 	return nil
 }
 
-// Datastore doesn't need to be closed, this function exists for compatibility
+// Close function exists here for compatibility as Datastore doesn't need to be closed
 func (d *Manager) Close() error {
 	return nil
+}
+
+// fetchProjectID returns the name of the GCP project that code is running in.
+func fetchProjectID() string {
+	value := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	if value == "" {
+		log.Fatal("Unable to get Project ID from env, if running standalone - please set 'GOOGLE_CLOUD_PROJECT'")
+	}
+	return value
 }

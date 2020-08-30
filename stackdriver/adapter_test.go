@@ -17,34 +17,30 @@ package stackdriver
 import (
 	"context"
 	"fmt"
+
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/ts-bridge/mocks"
-
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/appengine/aetest"
+	"github.com/google/ts-bridge/datastore"
+	"github.com/google/ts-bridge/mocks"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var testCtx context.Context
-
 func TestMain(m *testing.M) {
-	var done func()
-	var err error
-	testCtx, done, err = aetest.NewContext()
-	if err != nil {
-		panic(err)
-	}
-
+	ctx, cancel := context.WithCancel(context.Background())
+	// Save the emulator's quit channel.
+	quit := datastore.Emulator(ctx)
 	code := m.Run()
-	done()
+	cancel()
+	// Wait for channel close before exiting the test suite
+	<-quit
 	os.Exit(code)
 }
 
@@ -65,6 +61,8 @@ func unmarshalTimeSeries(textprotos []string) []*monitoringpb.TimeSeries {
 }
 
 func TestGetDescriptor(t *testing.T) {
+	ctx := context.Background()
+
 	for _, tt := range []struct {
 		name string
 		desc *metricpb.MetricDescriptor
@@ -82,7 +80,7 @@ func TestGetDescriptor(t *testing.T) {
 			mock.EXPECT().GetMetricDescriptor(gomock.Any(), gomock.Any()).Return(tt.desc, tt.err)
 			a := &Adapter{mock, time.Hour}
 
-			got, err := a.getDescriptor(testCtx, "foo", "bar")
+			got, err := a.getDescriptor(ctx, "foo", "bar")
 			if !proto.Equal(got, tt.want) {
 				t.Errorf("getDescriptor() = %v, want %v", got, tt.want)
 			}
@@ -94,6 +92,8 @@ func TestGetDescriptor(t *testing.T) {
 }
 
 func TestSetDescriptor(t *testing.T) {
+	ctx := context.Background()
+
 	for _, tt := range []struct {
 		name        string
 		desc        *metricpb.MetricDescriptor
@@ -126,7 +126,7 @@ func TestSetDescriptor(t *testing.T) {
 			mock.EXPECT().CreateMetricDescriptor(gomock.Any(), gomock.Any()).Times(tt.createCalls).Return(&metricpb.MetricDescriptor{}, tt.createError)
 			a := &Adapter{mock, time.Hour}
 
-			err := a.setDescriptor(testCtx, "foo", "bar", &metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_DOUBLE, Type: "bar", Description: "my metric"})
+			err := a.setDescriptor(ctx, "foo", "bar", &metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_DOUBLE, Type: "bar", Description: "my metric"})
 			if tt.wantError == "" && err != nil {
 				t.Errorf("setDescriptor() unexpected error: %v", err)
 			}
@@ -138,6 +138,8 @@ func TestSetDescriptor(t *testing.T) {
 }
 
 func TestLatestTimestampSimple(t *testing.T) {
+	ctx := context.Background()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mock := mocks.NewMockMetricClient(mockCtrl)
@@ -152,7 +154,7 @@ func TestLatestTimestampSimple(t *testing.T) {
 	mock.EXPECT().ListTimeSeries(gomock.Any(), gomock.Any()).Return(unmarshalTimeSeries([]string{points}), nil)
 	a := &Adapter{mock, time.Hour}
 
-	got, err := a.LatestTimestamp(testCtx, "foo", "bar")
+	got, err := a.LatestTimestamp(ctx, "foo", "bar")
 	if err != nil {
 		t.Errorf("LatestTimestamp() unexpected error: %v", err)
 	}
@@ -161,6 +163,8 @@ func TestLatestTimestampSimple(t *testing.T) {
 	}
 }
 func TestLatestTimestampBasedOnLookbackInterval(t *testing.T) {
+	ctx := context.Background()
+
 	for _, tt := range []struct {
 		name            string
 		getDescResponse *metricpb.MetricDescriptor
@@ -183,7 +187,7 @@ func TestLatestTimestampBasedOnLookbackInterval(t *testing.T) {
 			mock.EXPECT().ListTimeSeries(gomock.Any(), gomock.Any()).AnyTimes().Return(unmarshalTimeSeries(tt.listTSResponse), nil)
 
 			a := &Adapter{mock, 30 * time.Minute}
-			got, err := a.LatestTimestamp(testCtx, "foo", "bar")
+			got, err := a.LatestTimestamp(ctx, "foo", "bar")
 			if err != nil {
 				t.Errorf("LatestTimestamp() unexpected error: %v", err)
 			}
@@ -199,6 +203,8 @@ func TestLatestTimestampBasedOnLookbackInterval(t *testing.T) {
 }
 
 func TestLatestTimestampErrors(t *testing.T) {
+	ctx := context.Background()
+
 	for _, tt := range []struct {
 		name           string
 		getDescError   error
@@ -222,7 +228,7 @@ func TestLatestTimestampErrors(t *testing.T) {
 			mock.EXPECT().ListTimeSeries(gomock.Any(), gomock.Any()).AnyTimes().Return(unmarshalTimeSeries(tt.listTSResponse), tt.listTSError)
 
 			a := &Adapter{mock, 30 * time.Minute}
-			_, err := a.LatestTimestamp(testCtx, "foo", "bar")
+			_, err := a.LatestTimestamp(ctx, "foo", "bar")
 			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("LatestTimestamp() expected error to contain '%s'; got %v", tt.wantErr, err)
 			}
@@ -231,6 +237,8 @@ func TestLatestTimestampErrors(t *testing.T) {
 }
 
 func TestCreateTimeseriesErrors(t *testing.T) {
+	ctx := context.Background()
+
 	for _, tt := range []struct {
 		name            string
 		getDescError    error
@@ -251,7 +259,7 @@ func TestCreateTimeseriesErrors(t *testing.T) {
 			mock.EXPECT().CreateTimeSeries(gomock.Any(), gomock.Any()).AnyTimes().Return(tt.createTSError)
 
 			a := &Adapter{mock, time.Hour}
-			err := a.CreateTimeseries(testCtx, "foo", "bar", &metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_DOUBLE}, []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{}})
+			err := a.CreateTimeseries(ctx, "foo", "bar", &metricpb.MetricDescriptor{ValueType: metricpb.MetricDescriptor_DOUBLE}, []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{}})
 			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("LatestTimestamp() expected error to contain '%s'; got %v", tt.wantErr, err)
 			}

@@ -67,7 +67,7 @@ func sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storage, err := loadStorageEngine()
+	storage, err := loadStorageEngine(ctx)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -120,7 +120,7 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storage, err := loadStorageEngine()
+	storage, err := loadStorageEngine(ctx)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -138,13 +138,7 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		metricNames = append(metricNames, m.Name)
 	}
 
-	storageManager, err := loadStorageEngine()
-	if err != nil {
-		fmt.Errorf("could not load storage engine: %v", err)
-	}
-	defer storage.Close()
-
-	if err := storageManager.CleanupRecords(ctx, metricNames); err != nil {
+	if err := storage.CleanupRecords(ctx, metricNames); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
 }
@@ -158,7 +152,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	storage, err := loadStorageEngine()
+	storage, err := loadStorageEngine(ctx)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -214,11 +208,11 @@ func logAndReturnError(ctx context.Context, w http.ResponseWriter, err error) {
 }
 
 // Helper function to load the correct storage manager depending on settings
-func loadStorageEngine() (storage.Manager, error) {
+func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
 	storageEngine := os.Getenv("STORAGE_ENGINE")
 	switch storageEngine {
 	case "datastore":
-		return datastore.New(), nil
+		return datastore.New(ctx), nil
 	case "":
 		log.Warn("Storage engine not configured, defaulting to GAE datastore.")
 		return datastore.New(ctx), nil

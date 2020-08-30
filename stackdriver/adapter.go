@@ -137,6 +137,7 @@ func (a *Adapter) setDescriptor(ctx context.Context, project, name string, desc 
 // LatestTimestamp determines the timestamp of a latest point for a given metric in SD.
 // If metric does not exist, a timestamp which is `lookBackInterval` ago in the past is returned to backfill some data.
 func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (time.Time, error) {
+	logger := log.WithContext(ctx)
 	latest := time.Now().Add(-a.lookBackInterval)
 
 	desc, err := a.getDescriptor(ctx, project, name)
@@ -144,7 +145,7 @@ func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (ti
 		return latest, err
 	}
 	if desc == nil {
-		log.WithContext(ctx).Debugf("No metric descriptor found for %s", name)
+		logger.Debugf("No metric descriptor found for %s", name)
 		return latest, nil
 	}
 
@@ -154,11 +155,11 @@ func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (ti
 	}
 
 	if len(series) == 0 {
-		log.WithContext(ctx).Debugf("No timeseries found for %s", name)
+		logger.Debugf("No timeseries found for %s", name)
 		return latest, nil
 	}
 	if len(series) > 1 {
-		log.WithContext(ctx).Debugf("Several timeseries found for %s: %v", name, series)
+		logger.WithContext(ctx).Debugf("Several timeseries found for %s: %v", name, series)
 		return latest, fmt.Errorf("Found several time series with the same name: %v", series)
 	}
 
@@ -172,7 +173,7 @@ func (a *Adapter) LatestTimestamp(ctx context.Context, project, name string) (ti
 		}
 	}
 
-	log.WithContext(ctx).Debugf("Latest point found for %s is %v", name, latest)
+	logger.WithContext(ctx).Debugf("Latest point found for %s is %v", name, latest)
 	return latest, nil
 }
 

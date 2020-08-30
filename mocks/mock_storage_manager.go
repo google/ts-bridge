@@ -6,36 +6,35 @@ package mocks
 
 import (
 	context "context"
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	storage "github.com/google/ts-bridge/storage"
+	reflect "reflect"
 )
 
-// MockManager is a mock of Manager interface.
+// MockManager is a mock of Manager interface
 type MockManager struct {
 	ctrl     *gomock.Controller
 	recorder *MockManagerMockRecorder
 }
 
-// MockManagerMockRecorder is the mock recorder for MockManager.
+// MockManagerMockRecorder is the mock recorder for MockManager
 type MockManagerMockRecorder struct {
 	mock *MockManager
 }
 
-// NewMockManager creates a new mock instance.
+// NewMockManager creates a new mock instance
 func NewMockManager(ctrl *gomock.Controller) *MockManager {
 	mock := &MockManager{ctrl: ctrl}
 	mock.recorder = &MockManagerMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockManager) EXPECT() *MockManagerMockRecorder {
 	return m.recorder
 }
 
-// CleanupRecords mocks base method.
+// CleanupRecords mocks base method
 func (m *MockManager) CleanupRecords(arg0 context.Context, arg1 []string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CleanupRecords", arg0, arg1)
@@ -43,13 +42,13 @@ func (m *MockManager) CleanupRecords(arg0 context.Context, arg1 []string) error 
 	return ret0
 }
 
-// CleanupRecords indicates an expected call of CleanupRecords.
+// CleanupRecords indicates an expected call of CleanupRecords
 func (mr *MockManagerMockRecorder) CleanupRecords(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupRecords", reflect.TypeOf((*MockManager)(nil).CleanupRecords), arg0, arg1)
 }
 
-// Close mocks base method.
+// Close mocks base method
 func (m *MockManager) Close() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close")
@@ -57,13 +56,13 @@ func (m *MockManager) Close() error {
 	return ret0
 }
 
-// Close indicates an expected call of Close.
+// Close indicates an expected call of Close
 func (mr *MockManagerMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockManager)(nil).Close))
 }
 
-// NewMetricRecord mocks base method.
+// NewMetricRecord mocks base method
 func (m *MockManager) NewMetricRecord(arg0 context.Context, arg1, arg2 string) (storage.MetricRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewMetricRecord", arg0, arg1, arg2)
@@ -72,7 +71,7 @@ func (m *MockManager) NewMetricRecord(arg0 context.Context, arg1, arg2 string) (
 	return ret0, ret1
 }
 
-// NewMetricRecord indicates an expected call of NewMetricRecord.
+// NewMetricRecord indicates an expected call of NewMetricRecord
 func (mr *MockManagerMockRecorder) NewMetricRecord(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewMetricRecord", reflect.TypeOf((*MockManager)(nil).NewMetricRecord), arg0, arg1, arg2)

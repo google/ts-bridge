@@ -91,14 +91,14 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec s
 		return nil, nil, err
 	}
 	if len(series) == 0 {
-		log.WithContext(ctx).Infof("Datadog query '%s' returned no time series", m.config.Query)
+		log.WithContext(ctx).Infof("Datadog query %q returned no time series", m.config.Query)
 		return nil, nil, nil
 	} else if len(series) > 1 {
-		return nil, nil, fmt.Errorf("Datadog query '%s' returned %d time series", m.config.Query, len(series))
+		return nil, nil, fmt.Errorf("Datadog query %q returned %d time series", m.config.Query, len(series))
 	}
 
 	points, err := m.filterPoints(lastPoint, series[0].Points)
-	log.WithContext(ctx).Debugf("Got %d points (%d after filtering) in response to the Datadog query '%s'", len(series[0].Points), len(points), m.config.Query)
+	log.WithContext(ctx).Debugf("Got %d points (%d after filtering) in response to the Datadog query %q", len(series[0].Points), len(points), m.config.Query)
 
 	startTime, err := ptypes.TimestampProto(from)
 	if err != nil {
