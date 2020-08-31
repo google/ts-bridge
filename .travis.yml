@@ -1,19 +1,18 @@
 language: go
 go:
-  - "1.11"
+  - "1.13"
 env:
-  - DEP_VERSION="0.5.4" CLOUDSDK_CORE_DISABLE_PROMPTS=1
+  - CLOUDSDK_CORE_DISABLE_PROMPTS=1
 install:
-  - curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-257.0.0-linux-x86_64.tar.gz | tar xfz - -C $HOME
-  - $HOME/google-cloud-sdk/bin/gcloud components install app-engine-python app-engine-go cloud-datastore-emulator
-  # TODO: lock a version of mockgen.
-  - go get github.com/golang/mock/mockgen
-  - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
-  - chmod +x $GOPATH/bin/dep
+  - curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-307.0.0-linux-x86_64.tar.gz | tar xfz - -C $HOME
+  - $HOME/google-cloud-sdk/bin/gcloud components install beta cloud-datastore-emulator
+  # JRE is needed for the datastore emulator
+  - sudo apt-get install openjdk-8-jre-headless
 script:
   - source $HOME/google-cloud-sdk/path.bash.inc
-  - go test -v ./...
-  - dep check
+  - go get github.com/golang/mock/mockgen@v1.4.4
+  - go get ./...
+  - go test -v -timeout=30s ./...
   - gofmt -w $(go list -f '{{.Dir}}' ./...)
   - go generate ./...
   - |
