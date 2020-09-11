@@ -24,10 +24,10 @@ import (
 	"time"
 
 	sdexporter "contrib.go.opencensus.io/exporter/stackdriver"
+	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-	"google.golang.org/appengine/log"
 )
 
 // Manually configured buckets for a distribution metric measuring latency in milliseconds.
@@ -62,7 +62,7 @@ func NewCollector(ctx context.Context) (*StatsCollector, error) {
 
 	project := os.Getenv("SD_PROJECT_FOR_INTERNAL_METRICS")
 	if project == "" {
-		project = projectID(ctx)
+		project = projectID()
 	}
 	if project == "" {
 		return nil, fmt.Errorf("Please define SD_PROJECT_FOR_INTERNAL_METRICS if not running on App Engine")
@@ -86,7 +86,7 @@ func NewCollector(ctx context.Context) (*StatsCollector, error) {
 
 // logError is configured as the error handler for Stackdriver exporter.
 func (c *StatsCollector) logError(err error) {
-	log.Errorf(c.ctx, "StatsCollector: %v", err)
+	log.WithContext(c.ctx).Errorf("StatsCollector: %v", err)
 }
 
 // Close unregisters all metrics and Stackdriver exporter and flushes accumulated

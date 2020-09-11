@@ -6,38 +6,37 @@ package mocks
 
 import (
 	context "context"
-	reflect "reflect"
-	time "time"
-
 	gomock "github.com/golang/mock/gomock"
 	metric "google.golang.org/genproto/googleapis/api/metric"
-	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
+	monitoring "google.golang.org/genproto/googleapis/monitoring/v3"
+	reflect "reflect"
+	time "time"
 )
 
-// MockStackdriverAdapter is a mock of StackdriverAdapter interface.
+// MockStackdriverAdapter is a mock of StackdriverAdapter interface
 type MockStackdriverAdapter struct {
 	ctrl     *gomock.Controller
 	recorder *MockStackdriverAdapterMockRecorder
 }
 
-// MockStackdriverAdapterMockRecorder is the mock recorder for MockStackdriverAdapter.
+// MockStackdriverAdapterMockRecorder is the mock recorder for MockStackdriverAdapter
 type MockStackdriverAdapterMockRecorder struct {
 	mock *MockStackdriverAdapter
 }
 
-// NewMockStackdriverAdapter creates a new mock instance.
+// NewMockStackdriverAdapter creates a new mock instance
 func NewMockStackdriverAdapter(ctrl *gomock.Controller) *MockStackdriverAdapter {
 	mock := &MockStackdriverAdapter{ctrl: ctrl}
 	mock.recorder = &MockStackdriverAdapterMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockStackdriverAdapter) EXPECT() *MockStackdriverAdapterMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method.
+// Close mocks base method
 func (m *MockStackdriverAdapter) Close() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close")
@@ -45,27 +44,27 @@ func (m *MockStackdriverAdapter) Close() error {
 	return ret0
 }
 
-// Close indicates an expected call of Close.
+// Close indicates an expected call of Close
 func (mr *MockStackdriverAdapterMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStackdriverAdapter)(nil).Close))
 }
 
-// CreateTimeseries mocks base method.
-func (m *MockStackdriverAdapter) CreateTimeseries(arg0 context.Context, arg1, arg2 string, arg3 *metric.MetricDescriptor, arg4 []*v3.TimeSeries) error {
+// CreateTimeseries mocks base method
+func (m *MockStackdriverAdapter) CreateTimeseries(arg0 context.Context, arg1, arg2 string, arg3 *metric.MetricDescriptor, arg4 []*monitoring.TimeSeries) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateTimeseries", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateTimeseries indicates an expected call of CreateTimeseries.
+// CreateTimeseries indicates an expected call of CreateTimeseries
 func (mr *MockStackdriverAdapterMockRecorder) CreateTimeseries(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTimeseries", reflect.TypeOf((*MockStackdriverAdapter)(nil).CreateTimeseries), arg0, arg1, arg2, arg3, arg4)
 }
 
-// LatestTimestamp mocks base method.
+// LatestTimestamp mocks base method
 func (m *MockStackdriverAdapter) LatestTimestamp(arg0 context.Context, arg1, arg2 string) (time.Time, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LatestTimestamp", arg0, arg1, arg2)
@@ -74,7 +73,7 @@ func (m *MockStackdriverAdapter) LatestTimestamp(arg0 context.Context, arg1, arg
 	return ret0, ret1
 }
 
-// LatestTimestamp indicates an expected call of LatestTimestamp.
+// LatestTimestamp indicates an expected call of LatestTimestamp
 func (mr *MockStackdriverAdapterMockRecorder) LatestTimestamp(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LatestTimestamp", reflect.TypeOf((*MockStackdriverAdapter)(nil).LatestTimestamp), arg0, arg1, arg2)

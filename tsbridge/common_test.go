@@ -19,27 +19,16 @@ import (
 	"os"
 	"testing"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/aetest"
+	"github.com/google/ts-bridge/datastore"
 )
 
-// common context shared between all tests. Otherwise each test would need to start a separate
-// instance of dev_appserver.py which is quite slow.
-var testCtx context.Context
-
 func TestMain(m *testing.M) {
-	// Use strongly consistent datastore in tests to verify metric record cleanup.
-	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
-	if err != nil {
-		panic(err)
-	}
-	req, err := inst.NewRequest("GET", "/", nil)
-	if err != nil {
-		panic(err)
-	}
-	testCtx = appengine.NewContext(req)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	// Save the emulator's quit channel.
+	quit := datastore.Emulator(ctx)
 	code := m.Run()
-	inst.Close()
+	cancel()
+	// Wait for channel close before exiting the test suite
+	<-quit
 	os.Exit(code)
 }

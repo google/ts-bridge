@@ -16,22 +16,26 @@ package tsbridge
 
 import (
 	"context"
-	"github.com/google/ts-bridge/datastore"
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"google.golang.org/appengine"
+	"github.com/google/ts-bridge/datastore"
 )
 
-func fakeAppIDFunc(app string) func(context.Context) string {
-	return func(ctx context.Context) string {
-		return app
+func setProjectID(projectID string) {
+	if err := os.Setenv("GOOGLE_CLOUD_PROJECT", projectID); err != nil {
+		fmt.Errorf("couldn't set env GOOGLE_CLOUD_PROJECT: %v", err)
 	}
 }
 
 func TestNewConfigSimple(t *testing.T) {
-	cfg, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: datastore.New()})
+	ctx := context.Background()
+	storage := datastore.New(ctx)
+
+	cfg, err := NewConfig(ctx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: storage})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,25 +44,29 @@ func TestNewConfigSimple(t *testing.T) {
 		t.Errorf("cfg.metrics expected to have 4 elements; got %v", cfg.metrics)
 	}
 
-	// 'testapp' is the default app id used by aetest.
+	// 'testapp' is the default app id used by the emulator
 	if cfg.StackdriverDestinations[0].ProjectID != "testapp" {
 		t.Errorf("expected destination project to be equal to app id; got %v", cfg.StackdriverDestinations[0].ProjectID)
 	}
 
-	// project_id parameter is required when app id cannot be detected.
-	for _, appid := range []string{"", "None"} {
-		appIDFunc = fakeAppIDFunc(appid)
-		_, err := NewConfig(testCtx, &ConfigOptions{Filename: "testdata/valid.yaml"})
-		if !strings.Contains(err.Error(), "please provide project_id for") {
-			t.Errorf("passing project_id should be required")
-		}
+	setProjectID("")
+	_, errNoProject := NewConfig(ctx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: storage})
+
+	if errNoProject == nil {
+		t.Fatalf("NewConfig should produce an error with empty project id")
 	}
 
-	// restore original appIDFunc.
-	appIDFunc = appengine.AppID
+	if !strings.Contains(errNoProject.Error(), "please provide project_id for") {
+		t.Errorf("NewConfig should prompt for project_id if one cannot be inferred")
+	}
+
+	// restore original test projectID
+	setProjectID("testapp")
 }
 
 func TestNewConfigFailedValidation(t *testing.T) {
+	ctx := context.Background()
+
 	for _, tt := range []struct {
 		filename string
 		wantErr  string
@@ -70,7 +78,7 @@ func TestNewConfigFailedValidation(t *testing.T) {
 		{"invalid_name.yaml", "configuration file validation error"},
 		{"no_influxdb_query.yaml", "configuration file validation error"},
 	} {
-		_, err := NewConfig(testCtx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename), Storage: datastore.New()})
+		_, err := NewConfig(ctx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename), Storage: datastore.New(ctx)})
 		if !strings.Contains(err.Error(), tt.wantErr) {
 			t.Errorf("expected NewConfig error '%v'; got '%v'", tt.wantErr, err)
 		}

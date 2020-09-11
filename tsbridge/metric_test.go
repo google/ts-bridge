@@ -111,6 +111,9 @@ var metricUpdateTests = []struct {
 }
 
 func TestMetricUpdate(t *testing.T) {
+	ctx := context.Background()
+	storage := datastore.New(ctx)
+
 	for _, tt := range metricUpdateTests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
@@ -120,7 +123,7 @@ func TestMetricUpdate(t *testing.T) {
 			mockSource.EXPECT().Query()
 			mockSource.EXPECT().StackdriverName().MaxTimes(100).Return("sd-metricname")
 
-			m, err := NewMetric(testCtx, "metricname", mockSource, "sd-project", datastore.New())
+			m, err := NewMetric(ctx, "metricname", mockSource, "sd-project", storage)
 			if err != nil {
 				t.Fatalf("error while creating metric: %v", err)
 			}
@@ -135,7 +138,7 @@ func TestMetricUpdate(t *testing.T) {
 
 			// Any errors during the update are recorded in MetricRecord, so the function itself
 			// should succeed in all these cases.
-			if err := m.Update(testCtx, mockSD, collector); err != nil {
+			if err := m.Update(ctx, mockSD, collector); err != nil {
 				t.Errorf("Metric.Update() returned error %v", err)
 			}
 			if time.Now().Sub(rec.LastAttempt) > time.Minute {
@@ -153,6 +156,8 @@ func TestMetricUpdate(t *testing.T) {
 }
 
 func TestMetricImportLatencyMetric(t *testing.T) {
+	ctx := context.Background()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -160,7 +165,7 @@ func TestMetricImportLatencyMetric(t *testing.T) {
 	mockSource.EXPECT().Query()
 	mockSource.EXPECT().StackdriverName().MaxTimes(100).Return("sd-metricname")
 
-	m, err := NewMetric(testCtx, "metricname", mockSource, "sd-project", datastore.New())
+	m, err := NewMetric(ctx, "metricname", mockSource, "sd-project", datastore.New(ctx))
 	if err != nil {
 		t.Fatalf("error while creating metric: %v", err)
 	}
@@ -173,7 +178,7 @@ func TestMetricImportLatencyMetric(t *testing.T) {
 
 	collector, exporter := fakeStats(t)
 
-	if err := m.Update(testCtx, mockSD, collector); err != nil {
+	if err := m.Update(ctx, mockSD, collector); err != nil {
 		t.Errorf("Metric.Update() returned error %v", err)
 	}
 	collector.Close()
@@ -202,6 +207,9 @@ var updateAllMetricsTests = []struct {
 }
 
 func TestUpdateAllMetrics(t *testing.T) {
+	ctx := context.Background()
+	storage := datastore.New(ctx)
+
 	for _, tt := range updateAllMetricsTests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
@@ -220,7 +228,7 @@ func TestUpdateAllMetrics(t *testing.T) {
 				src.EXPECT().StackdriverName().MaxTimes(100).Return(name)
 				metric := &Metric{
 					Name:   name,
-					Record: &datastore.StoredMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+					Record: &datastore.StoredMetricRecord{LastUpdate: time.Now().Add(-time.Hour), Storage: storage},
 					Source: src,
 				}
 				config.metrics = append(config.metrics, metric)
@@ -238,7 +246,7 @@ func TestUpdateAllMetrics(t *testing.T) {
 
 			collector, exporter := fakeStats(t)
 
-			if errs := UpdateAllMetrics(testCtx, config, mockSD, tt.parallelism, collector); len(errs) > 0 {
+			if errs := UpdateAllMetrics(ctx, config, mockSD, tt.parallelism, collector); len(errs) > 0 {
 				t.Errorf("UpdateAllMetrics() returned errors: %v", errs)
 			}
 			collector.Close()
@@ -259,6 +267,9 @@ func TestUpdateAllMetrics(t *testing.T) {
 }
 
 func TestUpdateAllMetricsErrors(t *testing.T) {
+	ctx := context.Background()
+	storage := datastore.New(ctx)
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -269,7 +280,7 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 			&Metric{
 				// Having an emoji symbol in metric name should produce an error while defining an OpenCensus tag.
 				Name:   "invalid metric name 🥒",
-				Record: &datastore.StoredMetricRecord{LastUpdate: time.Now().Add(-time.Hour)},
+				Record: &datastore.StoredMetricRecord{LastUpdate: time.Now().Add(-time.Hour), Storage: storage},
 				Source: src,
 			},
 		},
@@ -279,7 +290,7 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 	collector, _ := fakeStats(t)
 	defer collector.Close()
 
-	errs := UpdateAllMetrics(testCtx, config, mockSD, 1, collector)
+	errs := UpdateAllMetrics(ctx, config, mockSD, 1, collector)
 	if len(errs) != 1 {
 		t.Errorf("expected UpdateAllMetrics to return an error")
 	}

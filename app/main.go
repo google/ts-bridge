@@ -31,20 +31,28 @@ import (
 	"github.com/google/ts-bridge/tsbridge"
 
 	"github.com/dustin/go-humanize"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/sync", sync)
 	http.HandleFunc("/cleanup", cleanup)
-	appengine.Main()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Infof("Defaulting to port %s", port)
+	}
+
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatalf("unable to start serving: %v", err)
+	}
 }
 
 // sync updates all configured metrics. It's triggered by App Engine Cron.
 func sync(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := r.Context()
 
 	t, err := time.ParseDuration(os.Getenv("UPDATE_TIMEOUT"))
 	if err != nil {
@@ -54,12 +62,19 @@ func sync(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, t)
 	defer cancel()
 
-	if !appengine.IsDevAppServer() && r.Header.Get("X-Appengine-Cron") != "true" {
+	if isAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
 		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
 		return
 	}
 
-	config, err := newConfig(ctx)
+	storage, err := loadStorageEngine(ctx)
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+	defer storage.Close()
+
+	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -98,14 +113,21 @@ func sync(w http.ResponseWriter, r *http.Request) {
 
 // cleanup removes obsolete metric records. It is triggered by App Engine Cron.
 func cleanup(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx := r.Context()
 
-	if !appengine.IsDevAppServer() && r.Header.Get("X-Appengine-Cron") != "true" {
+	if isAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
 		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
 		return
 	}
 
-	config, err := newConfig(ctx)
+	storage, err := loadStorageEngine(ctx)
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+	defer storage.Close()
+
+	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -116,12 +138,7 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		metricNames = append(metricNames, m.Name)
 	}
 
-	storageManager, err := loadStorageEngine()
-	if err != nil {
-		fmt.Errorf("could not load storage engine: %v", err)
-	}
-
-	if err := storageManager.CleanupRecords(ctx, metricNames); err != nil {
+	if err := storage.CleanupRecords(ctx, metricNames); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
 }
@@ -133,15 +150,23 @@ func index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := appengine.NewContext(r)
-	config, err := newConfig(ctx)
+	ctx := r.Context()
+
+	storage, err := loadStorageEngine(ctx)
+	if err != nil {
+		logAndReturnError(ctx, w, err)
+		return
+	}
+	defer storage.Close()
+
+	config, err := newRuntimeConfig(ctx, storage)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
 	}
 
 	funcMap := template.FuncMap{"humantime": humanize.Time}
-	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("index.html")
+	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("app/index.html")
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -152,7 +177,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 // newConfig initializes and returns tsbridge config.
-func newConfig(ctx context.Context) (*tsbridge.Config, error) {
+func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.Config, error) {
 	minPointAge, err := time.ParseDuration(os.Getenv("MIN_POINT_AGE"))
 	if err != nil {
 		return nil, fmt.Errorf("Could not parse MIN_POINT_AGE: %v", err)
@@ -163,7 +188,6 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 		return nil, fmt.Errorf("Could not parse COUNTER_RESET_INTERVAL: %v", err)
 	}
 
-	storageManager, err := loadStorageEngine()
 	if err != nil {
 		return nil, fmt.Errorf("Could not load storage engine: %v", err)
 	}
@@ -172,27 +196,33 @@ func newConfig(ctx context.Context) (*tsbridge.Config, error) {
 		Filename:             os.Getenv("CONFIG_FILE"),
 		MinPointAge:          minPointAge,
 		CounterResetInterval: resetInterval,
-		Storage:              storageManager,
+		Storage:              storage,
 	})
 }
 
 // Since some URLs are triggered by App Engine cron, error messages returned in HTTP response
 // might not be visible to humans. We need to log them as well, and this helper function does that.
 func logAndReturnError(ctx context.Context, w http.ResponseWriter, err error) {
-	log.Errorf(ctx, err.Error())
+	log.WithContext(ctx).WithError(err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 // Helper function to load the correct storage manager depending on settings
-func loadStorageEngine() (storage.Manager, error) {
+func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
 	storageEngine := os.Getenv("STORAGE_ENGINE")
 	switch storageEngine {
 	case "datastore":
-		return datastore.New(), nil
+		return datastore.New(ctx), nil
 	case "":
-		fmt.Println("Storage engine not configured, defaulting to GAE datastore.")
-		return datastore.New(), nil
+		log.Warn("Storage engine not configured, defaulting to GAE datastore.")
+		return datastore.New(ctx), nil
 	default:
 		return nil, fmt.Errorf("unknown storage engine selected: %s", storageEngine)
 	}
+}
+
+// Check if we're running in AppEngine by checking GAE_ENV variable
+func isAppEngine() bool {
+	_, set := os.LookupEnv("GAE_ENV")
+	return set
 }

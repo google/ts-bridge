@@ -19,21 +19,18 @@ package tsbridge
 import (
 	"context"
 	"fmt"
-	"github.com/google/ts-bridge/storage"
 	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/google/ts-bridge/datadog"
 	"github.com/google/ts-bridge/influxdb"
+	"github.com/google/ts-bridge/storage"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 	validator "gopkg.in/validator.v2"
 	yaml "gopkg.in/yaml.v2"
 )
-
-// App Engine function to get current app id, which needs to be overridden in tests.
-var appIDFunc = appengine.AppID
 
 // Config is what the YAML configuration file gets deserialized to.
 type Config struct {
@@ -106,7 +103,7 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 			return nil, fmt.Errorf("configuration file contains several destinations named '%s'", d.Name)
 		}
 		if d.ProjectID == "" {
-			d.ProjectID = projectID(ctx)
+			d.ProjectID = projectID()
 		}
 		if d.ProjectID == "" {
 			return nil, fmt.Errorf("please provide project_id for destination '%s'", d.Name)
@@ -157,17 +154,15 @@ func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
 		}
 	}
 
-	log.Debugf(ctx, "Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
+	log.WithContext(ctx).Debugf("Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
 	return c, nil
 }
 
-// projectID returns the name of the App Engine app that code is running in.
-// Empty string is returned if code is running in dev_appserver.py
-func projectID(ctx context.Context) string {
-	id := appIDFunc(ctx)
-	// dev_appserver.py returns "None" as a string. ¯\_(ツ)_/¯
-	if id == "None" {
+// projectID returns the name of the GCP project that code is running in.
+func projectID() string {
+	value, exists := os.LookupEnv("GOOGLE_CLOUD_PROJECT")
+	if !exists {
 		return ""
 	}
-	return id
+	return value
 }

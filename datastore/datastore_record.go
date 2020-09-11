@@ -15,10 +15,10 @@
 package datastore
 
 import (
+	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -35,17 +35,20 @@ type StoredMetricRecord struct {
 
 	// CounterStartTime is used to keep start timestamp for cumulative metrics.
 	CounterStartTime time.Time
+
+	// Storage provides access to
+	Storage *Manager
 }
 
 // Write metric data back to Datastore.
 func (m *StoredMetricRecord) write(ctx context.Context) error {
-	_, err := datastore.Put(ctx, m.key(ctx), m)
+	_, err := m.Storage.Client.Put(ctx, m.key(ctx), m)
 	return err
 }
 
 // Load metric record state from Datastore.
 func (m *StoredMetricRecord) load(ctx context.Context) error {
-	err := datastore.Get(ctx, m.key(ctx), m)
+	err := m.Storage.Client.Get(ctx, m.key(ctx), m)
 	if err != nil && err != datastore.ErrNoSuchEntity {
 		return err
 	}
@@ -54,7 +57,7 @@ func (m *StoredMetricRecord) load(ctx context.Context) error {
 
 // key returns the Datastore key for a given metric record.
 func (m *StoredMetricRecord) key(ctx context.Context) *datastore.Key {
-	return datastore.NewKey(ctx, kindName, m.Name, 0, nil)
+	return datastore.NameKey(kindName, m.Name, nil)
 }
 
 // GetLastUpdate returns LastUpdate timestamp.
@@ -75,7 +78,7 @@ func (m *StoredMetricRecord) SetCounterStartTime(ctx context.Context, start time
 
 // UpdateError updates metric status in Datastore with a given error message.
 func (m *StoredMetricRecord) UpdateError(ctx context.Context, e error) error {
-	log.Errorf(ctx, "%s: %s", m.Name, e)
+	log.WithContext(ctx).Errorf("%s: %s", m.Name, e)
 	m.LastStatus = fmt.Sprintf("ERROR: %s", e)
 	m.LastAttempt = time.Now()
 	return m.write(ctx)
@@ -83,7 +86,7 @@ func (m *StoredMetricRecord) UpdateError(ctx context.Context, e error) error {
 
 // UpdateSuccess updates metric status in Datastore with a given message.
 func (m *StoredMetricRecord) UpdateSuccess(ctx context.Context, points int, msg string) error {
-	log.Infof(ctx, "%s: %s", m.Name, msg)
+	log.WithContext(ctx).Infof("%s: %s", m.Name, msg)
 	m.LastStatus = fmt.Sprintf("OK: %s", msg)
 	m.LastAttempt = time.Now()
 	if points > 0 {

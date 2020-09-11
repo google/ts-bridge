@@ -15,13 +15,17 @@
 package datastore
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"google.golang.org/appengine/datastore"
+	"cloud.google.com/go/datastore"
 )
 
 func TestCleanupDatastoreMetricRecords(t *testing.T) {
+	ctx := context.Background()
+	storageManager := New(ctx)
+
 	for _, name := range []string{"metric1", "metric2"} {
 		r := StoredMetricRecord{
 			Name:        name,
@@ -29,23 +33,22 @@ func TestCleanupDatastoreMetricRecords(t *testing.T) {
 			LastStatus:  "OK: all good",
 			LastAttempt: time.Now().Add(-time.Hour),
 			LastUpdate:  time.Now().Add(-time.Hour),
+			Storage:     storageManager,
 		}
-		if err := r.write(testCtx); err != nil {
+		if err := r.write(ctx); err != nil {
 			t.Fatalf("error while initializing StoredMetricRecord: %v", err)
 		}
 	}
 
 	valid := []string{"metric1", "metric3"}
 
-	store := Manager{}
-
-	if err := store.CleanupRecords(testCtx, valid); err != nil {
+	if err := storageManager.CleanupRecords(ctx, valid); err != nil {
 		t.Errorf("unexpected error from CleanupRecords: %v", err)
 	}
 
 	q := datastore.NewQuery(kindName)
 	var records []*StoredMetricRecord
-	if _, err := q.GetAll(testCtx, &records); err != nil {
+	if _, err := storageManager.Client.GetAll(ctx, q, &records); err != nil {
 		t.Fatalf("error while reading metric records: %v", err)
 	}
 	if len(records) != 1 {

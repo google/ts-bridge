@@ -24,7 +24,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/influxdata/influxdb1-client/models"
 	client "github.com/influxdata/influxdb1-client/v2"
-	"google.golang.org/appengine/log"
+	log "github.com/sirupsen/logrus"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	"google.golang.org/genproto/googleapis/api/monitoredres"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
@@ -105,7 +105,7 @@ func (m *Metric) StackdriverData(ctx context.Context, lastPoint time.Time, rec s
 	}
 
 	if len(resp.Results[0].Series) == 0 {
-		log.Infof(ctx, "InfluxDB query '%s' returned no time series", m.config.Query)
+		log.WithContext(ctx).Infof("InfluxDB query '%s' returned no time series", m.config.Query)
 		return nil, nil, nil
 	} else if len(resp.Results[0].Series) > 1 {
 		return nil, nil, fmt.Errorf("InfluxDB query '%s' returned %d time series", m.config.Query, len(resp.Results[0].Series))
@@ -164,7 +164,7 @@ func (m *Metric) counterStartTime(ctx context.Context, lastPoint time.Time, rec 
 		if err := rec.SetCounterStartTime(ctx, start); err != nil {
 			return time.Time{}, fmt.Errorf("could not set counter start time: %v", err)
 		}
-		log.Infof(ctx, "counter start time for %s has been reset to %v", m.Name, start)
+		log.WithContext(ctx).Infof("counter start time for %s has been reset to %v", m.Name, start)
 	}
 	return rec.GetCounterStartTime(), nil
 }
