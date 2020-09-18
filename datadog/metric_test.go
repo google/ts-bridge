@@ -211,6 +211,7 @@ func TestStackdriverDataResponses(t *testing.T) {
 
 func TestPointsGetFilteredOut(t *testing.T) {
 	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	_, server := makeTestServer("good.json")
 	defer server.Close()
@@ -229,7 +230,7 @@ func TestPointsGetFilteredOut(t *testing.T) {
 		m, _ := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, tt.minPointAge, time.Hour)
 		m.client.SetBaseUrl(server.URL)
 
-		_, ts, err := m.StackdriverData(ctx, tt.lastPoint, &datastore.StoredMetricRecord{})
+		_, ts, err := m.StackdriverData(ctx, tt.lastPoint, &datastore.StoredMetricRecord{Storage: storage})
 		if err != nil {
 			t.Errorf("expected no errors; got %v", err)
 		}
@@ -264,6 +265,7 @@ func TestFilterPoints(t *testing.T) {
 
 func TestStackdriverDataUnits(t *testing.T) {
 	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	handler, server := makeTestServer("")
 	defer server.Close()
@@ -279,7 +281,7 @@ func TestStackdriverDataUnits(t *testing.T) {
 		{"no_unit.json", ""},
 	} {
 		handler.filename = tt.filename
-		desc, _, err := m.StackdriverData(ctx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{})
+		desc, _, err := m.StackdriverData(ctx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{Storage: storage})
 		if err != nil {
 			t.Errorf("%s: expected no errors; got %v", tt.filename, err)
 		}

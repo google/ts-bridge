@@ -342,6 +342,7 @@ func TestStackdriverDataErrors(t *testing.T) {
 
 func TestStackdriverDataGaugeResponse(t *testing.T) {
 	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	_, server := makeTestServer("good.json")
 	defer server.Close()
@@ -353,7 +354,7 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 	m, _ := NewSourceMetric("metricname", c, time.Second, time.Hour)
 	// The lastTime time passed here is irrelevant, as we stubbed what the
 	// query returns.
-	desc, ts, err := m.StackdriverData(ctx, time.Now(), &datastore.StoredMetricRecord{})
+	desc, ts, err := m.StackdriverData(ctx, time.Now(), &datastore.StoredMetricRecord{Storage: storage})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
@@ -410,6 +411,7 @@ func TestStackdriverDataGaugeResponse(t *testing.T) {
 
 func TestStackdriverDataTimeAggGaugeResponse(t *testing.T) {
 	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	_, server := makeTestServer("good.json")
 	defer server.Close()
@@ -428,7 +430,7 @@ func TestStackdriverDataTimeAggGaugeResponse(t *testing.T) {
 	// Influx query.
 	lastPoint := time.Unix(0, 1015000000000)                          // (1015s)
 	timeNow = func() time.Time { return time.Unix(0, 1035000000000) } // (1035s)
-	desc, ts, err := m.StackdriverData(ctx, lastPoint, &datastore.StoredMetricRecord{})
+	desc, ts, err := m.StackdriverData(ctx, lastPoint, &datastore.StoredMetricRecord{Storage: storage})
 	if err != nil {
 		t.Fatalf("unexpected StackdriverData error: %v", err)
 	}
