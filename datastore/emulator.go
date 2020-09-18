@@ -19,6 +19,9 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
+	"net"
+	"strings"
 	"time"
 
 	"os"
@@ -28,9 +31,6 @@ import (
 
 // Fake projectID set by the emulator
 const fakeProjectID = "testapp"
-
-// Port for emulator to use
-var emulatorPort = 30801
 
 // Emulator instantiates datastore emulator for use in tests.
 //
@@ -48,20 +48,30 @@ var emulatorPort = 30801
 //	 <-quit
 //
 func Emulator(ctx context.Context) <-chan struct{} {
-	l := log.WithContext(ctx)
 
-	// Set log formatter to process newlines since emulator gives a lot of output
+	// Create a child logger and set it to process newlines since emulator gives a lot of output.
+	l := log.WithContext(ctx)
 	l.Logger.SetFormatter(&log.TextFormatter{DisableQuote: true})
 
-	// Set up the command
+	// Get the actual Emulator binary path.
+	emuExec := findEmulatorPath()
+	port := fetchPort()
+
+	// Set up tempdir to use the emulator with.
+	tempDir, err := ioutil.TempDir("", "dsemu")
+	if err != nil {
+		log.Fatalf("Unable to create tempdir %v:", err)
+	}
+
 	var out bytes.Buffer
-	// --in-memory flag is important as DS emulator doesn't allow reset if data is stored on disk
-	cmd := exec.Command("gcloud",
-		"beta", "emulators", "datastore", "start",
-		fmt.Sprintf("--host-port=0.0.0.0:%v", emulatorPort),
-		"--no-store-on-disk",       // use in-memory store
-		"--consistency=1.0",        // disable random failure injection
-		"--project="+fakeProjectID, // use a fake project id so it doesn't try to infer one from environment
+	cmd := exec.Command(emuExec, "start",
+		// Start in 'testing' mode. Equivalent to passing --consistency=1.0,
+		//   --store_on_disk=false,
+		//   --store_index_configuration_on_disk=false
+		"--testing",
+		"--host=0.0.0.0",
+		fmt.Sprintf("--port=%v", port),
+		tempDir,
 	)
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -69,7 +79,7 @@ func Emulator(ctx context.Context) <-chan struct{} {
 
 	quit := make(chan struct{})
 
-	log.Info("booting up datastore emulator...")
+	log.Infof("booting up datastore emulator: %v", cmd.Args)
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("unable to start DS emulator: %v\n%v", err, out.String())
 	}
@@ -85,15 +95,15 @@ func Emulator(ctx context.Context) <-chan struct{} {
 
 	go func() {
 		select {
-		// Stop datastore emulator goroutine when context is finished
+		// Stop emulator goroutine when context is finished by sending SIGINT to the whole process group
 		case <-ctx.Done():
-			cmd.Process.Signal(os.Interrupt)
+			syscall.Kill(-cmd.Process.Pid, syscall.SIGINT)
 
 		case <-quit:
 		}
 	}()
 
-	if err := os.Setenv("DATASTORE_EMULATOR_HOST", fmt.Sprintf("localhost:%v", emulatorPort)); err != nil {
+	if err := os.Setenv("DATASTORE_EMULATOR_HOST", fmt.Sprintf("localhost:%v", port)); err != nil {
 		log.Errorf("couldn't set env DATASTORE_EMULATOR_HOST: %v", err)
 	}
 
@@ -103,4 +113,30 @@ func Emulator(ctx context.Context) <-chan struct{} {
 	}
 
 	return quit
+}
+
+func findEmulatorPath() string {
+	path, err := exec.LookPath("gcloud")
+	if err != nil {
+		log.Fatalf("Couldn't determine gcloud path")
+	}
+
+	return strings.Replace(path, "bin/gcloud", "platform/cloud-datastore-emulator/cloud_datastore_emulator", 1)
+}
+
+func fetchPort() int {
+	// Get a random port from the system
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		log.Fatalf("Unable to resolve local address to fetch port: %v", addr)
+	}
+
+	// Ensure we can bind to it
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		log.Fatalf("unable to open socket: %v", err)
+	}
+	defer l.Close()
+
+	return l.Addr().(*net.TCPAddr).Port
 }
