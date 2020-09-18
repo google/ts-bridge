@@ -24,8 +24,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Options holds settings specific to datastore
+type Options struct {
+}
+
 // New initializes the Manager struct implementing a generic storage.Manager interface
-func New(ctx context.Context) *Manager {
+func New(ctx context.Context, options *Options) *Manager {
 	dsClient, err := datastore.NewClient(ctx, fetchProjectID())
 	if err != nil {
 		log.Fatalf("could not create datastore client: %v", err)

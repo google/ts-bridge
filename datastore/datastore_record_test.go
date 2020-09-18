@@ -47,8 +47,7 @@ var metricRecordTests = []struct {
 
 func TestDatastoreMetricRecords(t *testing.T) {
 	ctx := context.Background()
-
-	storageManager := New(ctx)
+	storageManager := New(ctx, &Options{})
 
 	for _, tt := range metricRecordTests {
 		t.Run(tt.name, func(t *testing.T) {

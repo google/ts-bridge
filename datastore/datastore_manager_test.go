@@ -24,7 +24,7 @@ import (
 
 func TestCleanupDatastoreMetricRecords(t *testing.T) {
 	ctx := context.Background()
-	storageManager := New(ctx)
+	storageManager := New(ctx, &Options{})
 
 	for _, name := range []string{"metric1", "metric2"} {
 		r := StoredMetricRecord{
