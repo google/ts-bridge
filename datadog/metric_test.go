@@ -87,7 +87,7 @@ func makeTestServer(filename string) (*fixtureHandler, *httptest.Server) {
 
 func TestStackdriverDataErrors(t *testing.T) {
 	ctx := context.Background()
-	storage := datastore.New(ctx)
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	handler, server := makeTestServer("")
 	defer server.Close()
@@ -119,7 +119,7 @@ func TestStackdriverDataErrors(t *testing.T) {
 
 func TestStackdriverDataResponses(t *testing.T) {
 	ctx := context.Background()
-	storage := datastore.New(ctx)
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	for _, tt := range []struct {
 		filename string

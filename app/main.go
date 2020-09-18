@@ -212,10 +212,12 @@ func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
 	storageEngine := os.Getenv("STORAGE_ENGINE")
 	switch storageEngine {
 	case "datastore":
-		return datastore.New(ctx), nil
+		datastoreManager := datastore.New(ctx, &datastore.Options{})
+		return datastoreManager, nil
 	case "":
 		log.Warn("Storage engine not configured, defaulting to GAE datastore.")
-		return datastore.New(ctx), nil
+		datastoreManager := datastore.New(ctx, &datastore.Options{})
+		return datastoreManager, nil
 	default:
 		return nil, fmt.Errorf("unknown storage engine selected: %s", storageEngine)
 	}

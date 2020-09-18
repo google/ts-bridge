@@ -269,7 +269,7 @@ func TestStackdriverDataQuery(t *testing.T) {
 
 func TestStackdriverDataErrors(t *testing.T) {
 	ctx := context.Background()
-	storage := datastore.New(ctx)
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	handler, server := makeTestServer("")
 	defer server.Close()

@@ -112,7 +112,7 @@ var metricUpdateTests = []struct {
 
 func TestMetricUpdate(t *testing.T) {
 	ctx := context.Background()
-	storage := datastore.New(ctx)
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	for _, tt := range metricUpdateTests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -157,6 +157,7 @@ func TestMetricUpdate(t *testing.T) {
 
 func TestMetricImportLatencyMetric(t *testing.T) {
 	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -165,7 +166,7 @@ func TestMetricImportLatencyMetric(t *testing.T) {
 	mockSource.EXPECT().Query()
 	mockSource.EXPECT().StackdriverName().MaxTimes(100).Return("sd-metricname")
 
-	m, err := NewMetric(ctx, "metricname", mockSource, "sd-project", datastore.New(ctx))
+	m, err := NewMetric(ctx, "metricname", mockSource, "sd-project", storage)
 	if err != nil {
 		t.Fatalf("error while creating metric: %v", err)
 	}
@@ -208,7 +209,7 @@ var updateAllMetricsTests = []struct {
 
 func TestUpdateAllMetrics(t *testing.T) {
 	ctx := context.Background()
-	storage := datastore.New(ctx)
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	for _, tt := range updateAllMetricsTests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -268,7 +269,7 @@ func TestUpdateAllMetrics(t *testing.T) {
 
 func TestUpdateAllMetricsErrors(t *testing.T) {
 	ctx := context.Background()
-	storage := datastore.New(ctx)
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

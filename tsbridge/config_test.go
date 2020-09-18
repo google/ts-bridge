@@ -33,7 +33,7 @@ func setProjectID(projectID string) {
 
 func TestNewConfigSimple(t *testing.T) {
 	ctx := context.Background()
-	storage := datastore.New(ctx)
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	cfg, err := NewConfig(ctx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: storage})
 	if err != nil {
@@ -66,6 +66,7 @@ func TestNewConfigSimple(t *testing.T) {
 
 func TestNewConfigFailedValidation(t *testing.T) {
 	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
 
 	for _, tt := range []struct {
 		filename string
@@ -78,7 +79,7 @@ func TestNewConfigFailedValidation(t *testing.T) {
 		{"invalid_name.yaml", "configuration file validation error"},
 		{"no_influxdb_query.yaml", "configuration file validation error"},
 	} {
-		_, err := NewConfig(ctx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename), Storage: datastore.New(ctx)})
+		_, err := NewConfig(ctx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename), Storage: storage})
 		if !strings.Contains(err.Error(), tt.wantErr) {
 			t.Errorf("expected NewConfig error '%v'; got '%v'", tt.wantErr, err)
 		}
