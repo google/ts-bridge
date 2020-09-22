@@ -1,38 +1,14 @@
-// Copyright 2018 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-package datastore
+package boltdb
 
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
 )
-
-func TestMain(m *testing.M) {
-	ctx, cancel := context.WithCancel(context.Background())
-	// Save the emulator's quit channel.
-	quit := Emulator(ctx)
-	code := m.Run()
-	cancel()
-	// Wait for channel close before exiting the test suite
-	<-quit
-	os.Exit(code)
-}
 
 var metricRecordTests = []struct {
 	name                 string
@@ -45,9 +21,18 @@ var metricRecordTests = []struct {
 	{"5 points written", true, 5, true},
 }
 
-func TestDatastoreMetricRecords(t *testing.T) {
+func TestBoltDBMetricRecords(t *testing.T) {
 	ctx := context.Background()
-	storageManager := New(ctx, &Options{})
+
+	// Create a temporary file for BoltDB
+	tempFile, err := ioutil.TempFile("", "boltdb")
+	if err != nil {
+		t.Fatalf("Unable to create a temporary file for BoltDB: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+
+	manager := New(&Options{DBPath: tempFile.Name()})
+	defer manager.Close()
 
 	for _, tt := range metricRecordTests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -60,9 +45,9 @@ func TestDatastoreMetricRecords(t *testing.T) {
 				LastStatus:  "OK: all good",
 				LastAttempt: time.Now().Add(-time.Hour),
 				LastUpdate:  time.Now().Add(-time.Hour),
-				Storage:     storageManager,
+				storage:     manager,
 			}
-			if err := r.write(ctx); err != nil {
+			if err := r.write(); err != nil {
 				t.Fatalf("error while initializing StoredMetricRecord: %v", err)
 			}
 
@@ -76,9 +61,12 @@ func TestDatastoreMetricRecords(t *testing.T) {
 				t.Fatalf("error while updating StoredMetricRecord: %v", err)
 			}
 
-			rr := StoredMetricRecord{Storage: storageManager}
-			if err := rr.Storage.Client.Get(ctx, r.key(ctx), &rr); err != nil {
-				t.Fatalf("error while fetching StoredMetricRecord: %v", err)
+			rr := StoredMetricRecord{
+				Name:    "metricname",
+				storage: manager,
+			}
+			if err := rr.load(); err != nil {
+				t.Fatalf("error while loading StoredMetricRecord: %v", err)
 			}
 
 			if !strings.Contains(rr.LastStatus, "Test Message") {

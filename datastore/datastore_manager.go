@@ -53,9 +53,10 @@ func (d *Manager) NewMetricRecord(ctx context.Context, name, query string) (stor
 }
 
 // CleanupRecords removes obsolete metric records from Datastore.
-func (d *Manager) CleanupRecords(ctx context.Context, valid []string) error {
+//   `keep` represents metrics to be kept, all others will be purged
+func (d *Manager) CleanupRecords(ctx context.Context, keep []string) error {
 	existing := make(map[string]bool)
-	for _, m := range valid {
+	for _, m := range keep {
 		existing[m] = true
 	}
 	q := datastore.NewQuery(kindName)
@@ -63,7 +64,7 @@ func (d *Manager) CleanupRecords(ctx context.Context, valid []string) error {
 	if _, err := d.Client.GetAll(ctx, q, &records); err != nil {
 		return fmt.Errorf("could not list metric records: %v", err)
 	}
-	log.WithContext(ctx).Infof("%d metrics configured, %d metric records found in Datastore", len(valid), len(records))
+	log.WithContext(ctx).Infof("%d metrics configured, %d metric records found in Datastore", len(keep), len(records))
 	for _, r := range records {
 		if !existing[r.Name] {
 			log.WithContext(ctx).Infof("deleting obsolete metric record for %s", r.Name)

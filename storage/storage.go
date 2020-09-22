@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package provides generic interfaces for pluggable storage engines and associated
+// Package storage provides generic interfaces for pluggable storage engines and associated
 // abstract storage implementation logic
 package storage
 
@@ -23,10 +23,10 @@ import (
 
 //go:generate mockgen -destination=../mocks/mock_storage_manager.go -package=mocks github.com/google/ts-bridge/storage Manager
 
-// StorageManager interface implemented by associated Manager
+// Manager interface implemented by associated storage manager, e.g. Datastore, BoltDB, etc.
 type Manager interface {
 	NewMetricRecord(ctx context.Context, name, query string) (MetricRecord, error)
-	CleanupRecords(ctx context.Context, valid []string) error
+	CleanupRecords(ctx context.Context, keep []string) error
 	Close() error
 }
 

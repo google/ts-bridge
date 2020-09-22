@@ -211,7 +211,9 @@ the `env_variables` section of `app/app.yaml`.
     for more details.
 *   `STORAGE_ENGINE`: storage engine to use for storing metric metadata, 
     defaults to `datastore`.  
-    `datastore` - use AppEngine Datastore
+    * `datastore` - use AppEngine Datastore
+    * `boltdb` - use [BoltDB](https://github.com/etcd-io/bbolt) via [BoltHold](https://github.com/timshannon/bolthold)
+        * `BOLTDB_PATH` - path to BoltDB store, e.g. `/data/bolt.db` (defaults to `$PWD/bolt.db`)
 *   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
     (disabled by default).
 
