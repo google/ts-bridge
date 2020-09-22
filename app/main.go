@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/ts-bridge/boltdb"
 	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/storage"
@@ -214,6 +215,13 @@ func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
 	case "datastore":
 		datastoreManager := datastore.New(ctx, &datastore.Options{})
 		return datastoreManager, nil
+	case "boltdb":
+		if isAppEngine() {
+			return nil, fmt.Errorf("BoltDB storage is not supported on AppEngine")
+		}
+		opts := &boltdb.Options{DBPath: os.Getenv("BOLTDB_PATH")}
+
+		return boltdb.New(opts), nil
 	case "":
 		log.Warn("Storage engine not configured, defaulting to GAE datastore.")
 		datastoreManager := datastore.New(ctx, &datastore.Options{})
