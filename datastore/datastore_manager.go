@@ -17,7 +17,7 @@ package datastore
 import (
 	"context"
 	"fmt"
-	"os"
+	"github.com/google/ts-bridge/env"
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/ts-bridge/storage"
@@ -26,11 +26,22 @@ import (
 
 // Options holds settings specific to datastore
 type Options struct {
+	// Project sets the GCP project to use for communicating to datastore.
+	Project string
 }
 
 // New initializes the Manager struct implementing a generic storage.Manager interface
 func New(ctx context.Context, options *Options) *Manager {
-	dsClient, err := datastore.NewClient(ctx, fetchProjectID())
+	if options.Project == "" {
+		if env.IsAppEngine() {
+			options.Project = env.AppEngineProject()
+			log.Infof("No datastore project specified, defaulting to GAE project: %v", options.Project)
+		} else {
+			log.Fatalf("Could not determine project to use for Datastore, please set DATASTORE_PROJECT or --datastore-project flag")
+		}
+	}
+
+	dsClient, err := datastore.NewClient(ctx, options.Project)
 	if err != nil {
 		log.Fatalf("could not create datastore client: %v", err)
 	}
@@ -80,13 +91,4 @@ func (d *Manager) CleanupRecords(ctx context.Context, keep []string) error {
 // Close function exists here for compatibility as Datastore doesn't need to be closed
 func (d *Manager) Close() error {
 	return nil
-}
-
-// fetchProjectID returns the name of the GCP project that code is running in.
-func fetchProjectID() string {
-	value := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if value == "" {
-		log.Fatal("Unable to get Project ID from env, if running standalone - please set 'GOOGLE_CLOUD_PROJECT'")
-	}
-	return value
 }

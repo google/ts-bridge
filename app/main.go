@@ -19,48 +19,110 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/ts-bridge/boltdb"
 	"github.com/google/ts-bridge/datastore"
+	"github.com/google/ts-bridge/env"
 	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/storage"
 	"github.com/google/ts-bridge/tsbridge"
 
 	"github.com/dustin/go-humanize"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/alecthomas/kingpin.v2"
+)
+
+var (
+	debug = kingpin.Flag("debug", "enable debug mode").Envar("DEBUG").Default("false").Bool()
+	port  = kingpin.Flag("port", "ts-bridge server port").Envar("PORT").Default("8080").Int()
+
+	metricConfig = kingpin.Flag(
+		"metric-config", "metric configuration file path",
+	).Envar("CONFIG_FILE").Default("metrics.yaml").String()
+
+	enableStatusPage = kingpin.Flag(
+		"enable-status-page", "enable ts-bridge server status page",
+	).Envar("ENABLE_STATUS_PAGE").Default("false").Bool()
+
+	updateTimeout = kingpin.Flag(
+		"update-timeout", "total timeout for updating all metrics.",
+	).Envar("UPDATE_TIMEOUT").Default("5m").Duration()
+
+	updateParallelism = kingpin.Flag(
+		"update-parallelism", "number of metrics to update in parallel",
+	).Envar("UPDATE_PARALLELISM").Default("1").Int()
+
+	minPointAge = kingpin.Flag(
+		"min-point-age", "minimum age of points to be imported (allows data to settle before import).",
+	).Envar("MIN_POINT_AGE").Default("2m").Duration()
+
+	sdLookBackInterval = kingpin.Flag(
+		"sd-lookback-interval", "How far to look back while searching for recent data in Stackdriver.",
+	).Envar("SD_LOOKBACK_INTERVAL").Default("1h").Duration()
+
+	counterResetInterval = kingpin.Flag(
+		"counter-reset-interval", "how often to reset 'start time' to keep the query time window small enough to avoid aggregation.",
+	).Envar("COUNTER_RESET_INTERVAL").Default("30m").Duration()
+
+	sdInternalMetricsProject = kingpin.Flag(
+		"stats-sd-project", "Stackdriver project for internal ts-bridge metrics",
+	).Envar("SD_PROJECT_FOR_INTERNAL_METRICS").String()
+
+	// Storage options
+	storageEngine = kingpin.Flag(
+		"storage-engine", "storage engine to keep the metrics metadata in",
+	).Envar("STORAGE_ENGINE").Default("datastore").String()
+
+	datastoreProject = kingpin.Flag(
+		"datastore-project", "GCP Project to use for communicating with Datastore",
+	).Envar("DATASTORE_PROJECT").String()
+
+	boltdbPath = kingpin.Flag("boltdb-path", "path to BoltDB store, e.g. /data/bolt.db").Envar("BOLTDB_PATH").String()
 )
 
 func main() {
+	kingpin.Parse()
+
+	if *debug {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Debug logging enabled...")
+	}
+
+	if err := validateFlags(); err != nil {
+		log.Fatalf("Invalid flags: %v", err)
+	}
+
 	http.HandleFunc("/", index)
 	http.HandleFunc("/sync", sync)
 	http.HandleFunc("/cleanup", cleanup)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		log.Infof("Defaulting to port %s", port)
-	}
-
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	// Build a connection string, e.g. ":8080"
+	conn := net.JoinHostPort("", strconv.Itoa(*port))
+	log.Debugf("Connection string: %v", conn)
+	if err := http.ListenAndServe(conn, nil); err != nil {
 		log.Fatalf("unable to start serving: %v", err)
 	}
+
+}
+
+func validateFlags() error {
+	// Verify if updateParallelism is within bounds.
+	//   Note: bounds have been chosen arbitrarily.
+	if *updateParallelism < 1 || *updateParallelism > 100 {
+		return fmt.Errorf("expected --update-parallelism|UPDATE_PARALLELISM between 1 and 100; got %d", *updateParallelism)
+	}
+	return nil
 }
 
 // sync updates all configured metrics. It's triggered by App Engine Cron.
 func sync(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	t, err := time.ParseDuration(os.Getenv("UPDATE_TIMEOUT"))
-	if err != nil {
-		logAndReturnError(ctx, w, fmt.Errorf("Could not parse UPDATE_TIMEOUT duration: %v", err))
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, t)
+	ctx, cancel := context.WithTimeout(ctx, *updateTimeout)
 	defer cancel()
 
 	if env.IsAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
@@ -81,31 +143,21 @@ func sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sd, err := stackdriver.NewAdapter(ctx)
+	sd, err := stackdriver.NewAdapter(ctx, *sdLookBackInterval)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
 	}
 	defer sd.Close()
 
-	stats, err := tsbridge.NewCollector(ctx)
+	stats, err := tsbridge.NewCollector(ctx, *sdInternalMetricsProject)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
 	}
 	defer stats.Close()
 
-	p, err := strconv.Atoi(os.Getenv("UPDATE_PARALLELISM"))
-	if err != nil {
-		logAndReturnError(ctx, w, fmt.Errorf("could not parse UPDATE_PARALLELISM: %v", err))
-		return
-	}
-	if p < 1 || p > 100 {
-		logAndReturnError(ctx, w, fmt.Errorf("expected UPDATE_PARALLELISM between 1 and 100; got %d", p))
-		return
-	}
-
-	if errs := tsbridge.UpdateAllMetrics(ctx, config, sd, p, stats); errs != nil {
+	if errs := tsbridge.UpdateAllMetrics(ctx, config, sd, *updateParallelism, stats); errs != nil {
 		msg := strings.Join(errs, "; ")
 		logAndReturnError(ctx, w, errors.New(msg))
 		return
@@ -146,8 +198,9 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 
 // index shows a web page with metric import status.
 func index(w http.ResponseWriter, r *http.Request) {
-	if os.Getenv("ENABLE_STATUS_PAGE") != "yes" {
-		http.Error(w, "Status page is disabled. Please set ENABLE_STATUS_PAGE to 'yes' to enable it.", http.StatusNotFound)
+	if *enableStatusPage != true {
+		http.Error(w, "Status page is disabled. Please set ENABLE_STATUS_PAGE or --enable-status-page flag to to enable it.",
+			http.StatusNotFound)
 		return
 	}
 
@@ -179,24 +232,10 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 // newConfig initializes and returns tsbridge config.
 func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.Config, error) {
-	minPointAge, err := time.ParseDuration(os.Getenv("MIN_POINT_AGE"))
-	if err != nil {
-		return nil, fmt.Errorf("Could not parse MIN_POINT_AGE: %v", err)
-	}
-
-	resetInterval, err := time.ParseDuration(os.Getenv("COUNTER_RESET_INTERVAL"))
-	if err != nil {
-		return nil, fmt.Errorf("Could not parse COUNTER_RESET_INTERVAL: %v", err)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("Could not load storage engine: %v", err)
-	}
-
 	return tsbridge.NewConfig(ctx, &tsbridge.ConfigOptions{
-		Filename:             os.Getenv("CONFIG_FILE"),
-		MinPointAge:          minPointAge,
-		CounterResetInterval: resetInterval,
+		Filename:             *metricConfig,
+		MinPointAge:          *minPointAge,
+		CounterResetInterval: *counterResetInterval,
 		Storage:              storage,
 	})
 }
@@ -210,23 +249,18 @@ func logAndReturnError(ctx context.Context, w http.ResponseWriter, err error) {
 
 // Helper function to load the correct storage manager depending on settings
 func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
-	storageEngine := os.Getenv("STORAGE_ENGINE")
-	switch storageEngine {
+	switch *storageEngine {
 	case "datastore":
-		datastoreManager := datastore.New(ctx, &datastore.Options{})
+		datastoreManager := datastore.New(ctx, &datastore.Options{Project: *datastoreProject})
 		return datastoreManager, nil
 	case "boltdb":
 		if env.IsAppEngine() {
 			return nil, fmt.Errorf("BoltDB storage is not supported on AppEngine")
 		}
-		opts := &boltdb.Options{DBPath: os.Getenv("BOLTDB_PATH")}
+		opts := &boltdb.Options{DBPath: *boltdbPath}
 
 		return boltdb.New(opts), nil
-	case "":
-		log.Warn("Storage engine not configured, defaulting to GAE datastore.")
-		datastoreManager := datastore.New(ctx, &datastore.Options{})
-		return datastoreManager, nil
 	default:
-		return nil, fmt.Errorf("unknown storage engine selected: %s", storageEngine)
+		return nil, fmt.Errorf("unknown storage engine selected: %s", *storageEngine)
 	}
 }

@@ -17,7 +17,6 @@ package stackdriver
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -48,18 +47,15 @@ type Adapter struct {
 }
 
 // NewAdapter returns a new Stackdriver adapter.
-func NewAdapter(ctx context.Context) (*Adapter, error) {
+func NewAdapter(ctx context.Context, lookbackInterval time.Duration) (*Adapter, error) {
 	c, err := newClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	d, err := time.ParseDuration(os.Getenv("SD_LOOKBACK_INTERVAL"))
-	if err != nil {
-		return nil, fmt.Errorf("Could not parse SD_LOOKBACK_INTERVAL duration: %v", err)
-	}
+	log.Debugf("StackDriver client/lookback configured: %v/%v", c, lookbackInterval)
 
-	return &Adapter{c, d}, nil
+	return &Adapter{c, lookbackInterval}, nil
 }
 
 // Close closes the underlying metric client.

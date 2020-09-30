@@ -177,14 +177,16 @@ minute.
 
 ## Global settings
 
-Some other settings can be set globally as App Engine environment variables via
-the `env_variables` section of `app/app.yaml`.
+Some other settings can be set globally as environment variables or command-line flags.
+In case of AppEngine variables are configured in the `env_variables` section of `app/app.yaml`.
 
-*   `CONFIG_FILE`: name of the metric configuration file (`metrics.yaml`).
-*   `SD_LOOKBACK_INTERVAL`: time interval used while searching for recent data
-    in Stackdriver. This is also the default backfill interval for when no
-    recent points are found. This interval should be kept reasonably short to
-    avoid fetching too much data from Stackdriver on each update.
+*   `DEBUG` (`--debug`): enable debug logging.
+*   `PORT` (`--port`): ts-bridge server port.
+*   `CONFIG_FILE` (`--metric-config`): name of the metric configuration file (`metrics.yaml`).
+*   `SD_LOOKBACK_INTERVAL` (`--sd-lookback-interval`): time interval used while 
+    searching for recent data in Stackdriver. This is also the default backfill
+    interval for when no recent points are found. This interval should be kept 
+    reasonably short to avoid fetching too much data from Stackdriver on each update.
     *   You might be tempted to increase this significantly to backfill historic
         values. Please keep in mind that Stackdriver
         [does not allow](https://cloud.google.com/monitoring/custom-metrics/creating-metrics#writing-ts)
@@ -193,29 +195,29 @@ the `env_variables` section of `app/app.yaml`.
         [keep the number of points in each response below ~300](https://docs.datadoghq.com/getting_started/from_the_query_to_the_graph/#how).
         This means that a single request can only cover a time period of 5 hours
         if you are aiming to get a point per minute.
-*   `UPDATE_TIMEOUT`: the total time that updating all metrics is allowed to
-    take. The incoming HTTP request from App Engine Cron will fail if it takes
-    longer than this, and a subsequent update will be triggered again.
-*   `UPDATE_PARALLELISM`: number of metric updates that are performed in
-    parallel. Parallel updates are scheduled using goroutines and still happen
-    in the context of a single incoming HTTP request, and setting this value too
-    high might result in the App Engine instance running out of RAM.
-*   `MIN_POINT_AGE`: minimum age of a data point returned by a metric source
-    that makes it eligible for being written. Points that are very fresh
-    (default is 1.5 minutes) are ignored, since the metric source might return
+*   `UPDATE_TIMEOUT` (`--update-timeout`): the total time that updating all metrics
+    is allowed to take. The incoming HTTP request from App Engine Cron will fail if
+    it takes longer than this, and a subsequent update will be triggered again.
+*   `UPDATE_PARALLELISM` (`--update-parallelism`): number of metric updates that
+    are performed in parallel. Parallel updates are scheduled using goroutines and
+    still happen in the context of a single incoming HTTP request, and setting this
+    value too high might result in the App Engine instance running out of RAM.
+*   `MIN_POINT_AGE` (`--min-point-age`): minimum age of a data point returned by a
+    metric source that makes it eligible for being written. Points that are very 
+    fresh (default is 1.5 minutes) are ignored, since the metric source might return
     incomplete data for them if some input data is delayed.
-*   `COUNTER_RESET_INTERVAL`: while importing counters, ts-bridge needs
-    to reset 'start time' regularly to keep the query time window small enough.
-    This parameter defines how often a new start time is chosen, and defaults
-    to 30 minutes. See [Cumulative metrics](#cumulative-metrics) section below
-    for more details.
-*   `STORAGE_ENGINE`: storage engine to use for storing metric metadata, 
-    defaults to `datastore`.  
+*   `COUNTER_RESET_INTERVAL` (`--counter-reset-interval`): while importing counters,
+    ts-bridge needs to reset 'start time' regularly to keep the query time window 
+    small enough. This parameter defines how often a new start time is chosen, and
+    defaults to 30 minutes. See [Cumulative metrics](#cumulative-metrics) section 
+    below for more details.
+*   `STORAGE_ENGINE` (`--storage-engine`): storage engine to use for storing metric
+    metadata, defaults to `datastore`.  
     * `datastore` - use AppEngine Datastore
     * `boltdb` - use [BoltDB](https://github.com/etcd-io/bbolt) via [BoltHold](https://github.com/timshannon/bolthold)
-        * `BOLTDB_PATH` - path to BoltDB store, e.g. `/data/bolt.db` (defaults to `$PWD/bolt.db`)
-*   `ENABLE_STATUS_PAGE`: can be set to 'yes' to enable the status web page
-    (disabled by default).
+        * `BOLTDB_PATH` (`--boltdb-path`) - path to BoltDB store, e.g. `/data/bolt.db` (defaults to `$PWD/bolt.db`)
+*   `ENABLE_STATUS_PAGE` (`--enable-status-page`): can be set to 'yes' to enable
+    the status web page (disabled by default).
 
 You can use `--env_var` flag to override these environment variables while
 running the app via `dev_appserver.py`.

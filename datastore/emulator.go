@@ -109,12 +109,12 @@ func Emulator(ctx context.Context) <-chan struct{} {
 
 	// This is emulating the old `aetest` framework that has a hardcoded "testapp" value for project
 	if err := os.Setenv("GOOGLE_CLOUD_PROJECT", fakeProjectID); err != nil {
-		log.Errorf("couldn't set env GOOGLE_CLOUD_PROJECT: %v", err)
+		log.Fatalf("couldn't set env GOOGLE_CLOUD_PROJECT: %v", err)
 	}
 
 	// This env is set to pretend we're running on AppEngine
 	if err := os.Setenv("GAE_ENV", "standard"); err != nil {
-		log.Errorf("couldn't set env GOOGLE_CLOUD_PROJECT: %v", err)
+		log.Fatalf("couldn't set env GAE_ENV: %v", err)
 	}
 
 	return quit
@@ -123,7 +123,7 @@ func Emulator(ctx context.Context) <-chan struct{} {
 func findEmulatorPath() string {
 	path, err := exec.LookPath("gcloud")
 	if err != nil {
-		log.Fatalf("Couldn't determine gcloud path")
+		log.Fatalf("Couldn't determine gcloud path: %v", err)
 	}
 
 	return strings.Replace(path, "bin/gcloud", "platform/cloud-datastore-emulator/cloud_datastore_emulator", 1)
