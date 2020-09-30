@@ -6,6 +6,8 @@ require (
 	cloud.google.com/go v0.65.0
 	cloud.google.com/go/datastore v1.2.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.4
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/aws/aws-sdk-go v1.34.13 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
@@ -27,6 +29,7 @@ require (
 	google.golang.org/api v0.30.0
 	google.golang.org/genproto v0.0.0-20200829155447-2bf3329a0021
 	google.golang.org/grpc v1.31.1
+	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
 	gopkg.in/yaml.v2 v2.3.0
 )

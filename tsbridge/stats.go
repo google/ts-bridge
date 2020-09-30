@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/ts-bridge/env"
+
 	sdexporter "contrib.go.opencensus.io/exporter/stackdriver"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/stats"
@@ -56,16 +58,18 @@ type StatsCollector struct {
 
 // NewCollector creates a new StatsCollector.
 // Users need to call StatsCollector.Close() when it's no longer needed. Only a single collector can be active per process.
-func NewCollector(ctx context.Context) (*StatsCollector, error) {
+func NewCollector(ctx context.Context, project string) (*StatsCollector, error) {
 	var err error
 	c := &StatsCollector{ctx: ctx}
 
-	project := os.Getenv("SD_PROJECT_FOR_INTERNAL_METRICS")
 	if project == "" {
-		project = projectID()
-	}
-	if project == "" {
-		return nil, fmt.Errorf("Please define SD_PROJECT_FOR_INTERNAL_METRICS if not running on App Engine")
+		if env.IsAppEngine() {
+			project = os.Getenv("GOOGLE_CLOUD_PROJECT")
+			log.Infof("Cannot determine project to store stats in, defaulting to GAE project: %v", project)
+		} else {
+			return nil, fmt.Errorf("error initializing stats collector - project empty: set SD_PROJECT_FOR_INTERNAL_METRICS or --stats-sd-project if not running on App Engine")
+		}
+
 	}
 
 	c.Exporter, err = sdexporter.NewExporter(sdexporter.Options{
