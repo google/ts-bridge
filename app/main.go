@@ -63,7 +63,7 @@ func sync(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, t)
 	defer cancel()
 
-	if isAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
+	if env.IsAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
 		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
 		return
 	}
@@ -116,7 +116,7 @@ func sync(w http.ResponseWriter, r *http.Request) {
 func cleanup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if isAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
+	if env.IsAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
 		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
 		return
 	}
@@ -216,7 +216,7 @@ func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
 		datastoreManager := datastore.New(ctx, &datastore.Options{})
 		return datastoreManager, nil
 	case "boltdb":
-		if isAppEngine() {
+		if env.IsAppEngine() {
 			return nil, fmt.Errorf("BoltDB storage is not supported on AppEngine")
 		}
 		opts := &boltdb.Options{DBPath: os.Getenv("BOLTDB_PATH")}
@@ -229,10 +229,4 @@ func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
 	default:
 		return nil, fmt.Errorf("unknown storage engine selected: %s", storageEngine)
 	}
-}
-
-// Check if we're running in AppEngine by checking GAE_ENV variable
-func isAppEngine() bool {
-	_, set := os.LookupEnv("GAE_ENV")
-	return set
 }
