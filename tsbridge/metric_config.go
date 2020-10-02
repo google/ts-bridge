@@ -32,8 +32,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// Config is what the YAML configuration file gets deserialized to.
-type Config struct {
+// MetricConfig is what the YAML configuration file gets deserialized to.
+type MetricConfig struct {
 	DatadogMetrics  []*DatadogMetricConfig  `yaml:"datadog_metrics"`
 	InfluxDBMetrics []*InfluxDBMetricConfig `yaml:"influxdb_metrics"`
 
@@ -70,7 +70,7 @@ type InfluxDBMetricConfig struct {
 }
 
 // Metrics returns a list of metrics defined in the configuration file.
-func (c *Config) Metrics() []*Metric {
+func (c *MetricConfig) Metrics() []*Metric {
 	return c.metrics
 }
 
@@ -82,13 +82,13 @@ type ConfigOptions struct {
 	Storage              storage.Manager
 }
 
-// NewConfig reads and validates a configuration file, returning the Config struct.
-func NewConfig(ctx context.Context, opts *ConfigOptions) (*Config, error) {
+// NewMetricConfig reads and validates a configuration file, returning the MetricConfig struct.
+func NewMetricConfig(ctx context.Context, opts *ConfigOptions) (*MetricConfig, error) {
 	data, err := ioutil.ReadFile(opts.Filename)
 	if err != nil {
 		return nil, err
 	}
-	c := &Config{}
+	c := &MetricConfig{}
 	if err := yaml.UnmarshalStrict(data, c); err != nil {
 		return nil, err
 	}

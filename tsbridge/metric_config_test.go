@@ -31,11 +31,11 @@ func setProjectID(projectID string) {
 	}
 }
 
-func TestNewConfigSimple(t *testing.T) {
+func TestNewMetricConfigSimple(t *testing.T) {
 	ctx := context.Background()
 	storage := datastore.New(ctx, &datastore.Options{})
 
-	cfg, err := NewConfig(ctx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: storage})
+	cfg, err := NewMetricConfig(ctx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: storage})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,21 +50,21 @@ func TestNewConfigSimple(t *testing.T) {
 	}
 
 	setProjectID("")
-	_, errNoProject := NewConfig(ctx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: storage})
+	_, errNoProject := NewMetricConfig(ctx, &ConfigOptions{Filename: "testdata/valid.yaml", Storage: storage})
 
 	if errNoProject == nil {
-		t.Fatalf("NewConfig should produce an error with empty project id")
+		t.Fatalf("NewMetricConfig should produce an error with empty project id")
 	}
 
 	if !strings.Contains(errNoProject.Error(), "please provide project_id for") {
-		t.Errorf("NewConfig should prompt for project_id if one cannot be inferred")
+		t.Errorf("NewMetricConfig should prompt for project_id if one cannot be inferred")
 	}
 
 	// restore original test projectID
 	setProjectID("testapp")
 }
 
-func TestNewConfigFailedValidation(t *testing.T) {
+func TestNewMetricConfigFailedValidation(t *testing.T) {
 	ctx := context.Background()
 	storage := datastore.New(ctx, &datastore.Options{})
 
@@ -79,7 +79,7 @@ func TestNewConfigFailedValidation(t *testing.T) {
 		{"invalid_name.yaml", "configuration file validation error"},
 		{"no_influxdb_query.yaml", "configuration file validation error"},
 	} {
-		_, err := NewConfig(ctx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename), Storage: storage})
+		_, err := NewMetricConfig(ctx, &ConfigOptions{Filename: filepath.Join("testdata", tt.filename), Storage: storage})
 		if !strings.Contains(err.Error(), tt.wantErr) {
 			t.Errorf("expected NewConfig error '%v'; got '%v'", tt.wantErr, err)
 		}

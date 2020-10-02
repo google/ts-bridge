@@ -216,7 +216,7 @@ func TestUpdateAllMetrics(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
-			config := &Config{}
+			config := &MetricConfig{}
 			for i := 0; i < tt.numMetrics; i++ {
 				name := fmt.Sprintf("metric-%d", i)
 				src := mocks.NewMockSourceMetric(mockCtrl)
@@ -276,7 +276,7 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 
 	src := mocks.NewMockSourceMetric(mockCtrl)
 	src.EXPECT().StackdriverName().MaxTimes(100).Return("sd-name")
-	config := &Config{
+	config := &MetricConfig{
 		metrics: []*Metric{
 			&Metric{
 				// Having an emoji symbol in metric name should produce an error while defining an OpenCensus tag.

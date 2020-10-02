@@ -230,9 +230,9 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// newConfig initializes and returns tsbridge config.
-func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.Config, error) {
-	return tsbridge.NewConfig(ctx, &tsbridge.ConfigOptions{
+// newRuntimeConfig initializes and returns tsbridge config
+func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.MetricConfig, error) {
+	return tsbridge.NewMetricConfig(ctx, &tsbridge.ConfigOptions{
 		Filename:             *metricConfig,
 		MinPointAge:          *minPointAge,
 		CounterResetInterval: *counterResetInterval,
