@@ -76,7 +76,7 @@ func (d *Manager) CleanupRecords(ctx context.Context, keep []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to count up records to delete: %v", err)
 	}
-	log.Infof("%d metrics configured, %d metric records found in BoltDB", len(keep), count)
+	log.Infof("%d metrics configured, %d stale metric records found in BoltDB", len(keep), count)
 	// Delete matching records
 	if err := d.Store.DeleteMatching(datatype, query); err != nil {
 		return fmt.Errorf("unable to clean up records from BoltDB: %v", err)
