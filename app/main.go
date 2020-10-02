@@ -18,18 +18,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html/template"
-	"net"
-	"net/http"
-	"strconv"
-	"strings"
-
 	"github.com/google/ts-bridge/boltdb"
 	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/env"
 	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/storage"
 	"github.com/google/ts-bridge/tsbridge"
+	"html/template"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	log "github.com/sirupsen/logrus"
@@ -232,12 +231,17 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 // newRuntimeConfig initializes and returns tsbridge config
 func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.MetricConfig, error) {
-	return tsbridge.NewMetricConfig(ctx, &tsbridge.ConfigOptions{
-		Filename:             *metricConfig,
-		MinPointAge:          *minPointAge,
-		CounterResetInterval: *counterResetInterval,
-		Storage:              storage,
+	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
+		Filename:                 *metricConfig,
+		MinPointAge:              *minPointAge,
+		CounterResetInterval:     *counterResetInterval,
+		SDLookBackInterval:       *sdLookBackInterval,
+		SDInternalMetricsProject: *sdInternalMetricsProject,
+		UpdateParallelism:        *updateParallelism,
+		EnableStatusPage:         *enableStatusPage,
+		StorageEngine:            *storageEngine,
 	})
+	return tsbridge.NewMetricConfig(ctx, config, storage)
 }
 
 // Since some URLs are triggered by App Engine cron, error messages returned in HTTP response

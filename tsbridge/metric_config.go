@@ -19,17 +19,14 @@ package tsbridge
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"time"
-
 	"github.com/google/ts-bridge/datadog"
 	"github.com/google/ts-bridge/influxdb"
 	"github.com/google/ts-bridge/storage"
-
 	log "github.com/sirupsen/logrus"
 	validator "gopkg.in/validator.v2"
 	yaml "gopkg.in/yaml.v2"
+	"io/ioutil"
+	"os"
 )
 
 // MetricConfig is what the YAML configuration file gets deserialized to.
@@ -74,17 +71,9 @@ func (c *MetricConfig) Metrics() []*Metric {
 	return c.metrics
 }
 
-// ConfigOptions is a set of global options required to initialize configuration.
-type ConfigOptions struct {
-	Filename             string
-	MinPointAge          time.Duration
-	CounterResetInterval time.Duration
-	Storage              storage.Manager
-}
-
 // NewMetricConfig reads and validates a configuration file, returning the MetricConfig struct.
-func NewMetricConfig(ctx context.Context, opts *ConfigOptions) (*MetricConfig, error) {
-	data, err := ioutil.ReadFile(opts.Filename)
+func NewMetricConfig(ctx context.Context, config *Config, storage storage.Manager) (*MetricConfig, error) {
+	data, err := ioutil.ReadFile(config.Options.Filename)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +108,7 @@ func NewMetricConfig(ctx context.Context, opts *ConfigOptions) (*MetricConfig, e
 		if !ok {
 			return fmt.Errorf("destination '%s' not found", dest)
 		}
-		metric, err := NewMetric(ctx, name, sourceMetric, project, opts.Storage)
+		metric, err := NewMetric(ctx, name, sourceMetric, project, storage)
 		if err != nil {
 			return fmt.Errorf("cannot create metric '%s': %v", name, err)
 		}
@@ -133,7 +122,7 @@ func NewMetricConfig(ctx context.Context, opts *ConfigOptions) (*MetricConfig, e
 	}
 
 	for _, m := range c.DatadogMetrics {
-		metric, err := datadog.NewSourceMetric(m.Name, &m.MetricConfig, opts.MinPointAge, opts.CounterResetInterval)
+		metric, err := datadog.NewSourceMetric(m.Name, &m.MetricConfig, config.Options.MinPointAge, config.Options.CounterResetInterval)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create Datadog source metric '%s': %v", m.Name, err)
 		}
@@ -144,7 +133,7 @@ func NewMetricConfig(ctx context.Context, opts *ConfigOptions) (*MetricConfig, e
 	}
 
 	for _, m := range c.InfluxDBMetrics {
-		metric, err := influxdb.NewSourceMetric(m.Name, &m.MetricConfig, opts.MinPointAge, opts.CounterResetInterval)
+		metric, err := influxdb.NewSourceMetric(m.Name, &m.MetricConfig, config.Options.MinPointAge, config.Options.CounterResetInterval)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create InfluxDB source metric '%s': %v", m.Name, err)
 		}
