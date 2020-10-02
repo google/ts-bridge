@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/google/ts-bridge/boltdb"
@@ -72,6 +73,14 @@ var (
 		"stats-sd-project", "Stackdriver project for internal ts-bridge metrics",
 	).Envar("SD_PROJECT_FOR_INTERNAL_METRICS").String()
 
+	syncPeriod = kingpin.Flag(
+		"sync-period", "How often to sync metrics when running in standalone mode",
+	).Envar("SYNC_PERIOD").Default("60s").Duration()
+
+	syncCleanupAfter = kingpin.Flag(
+		"sync-cleanup-after", "Run cleanup after X sync loops",
+	).Envar("SYNC_CLEANUP_AFTER").Default("100").Int()
+
 	// Storage options
 	storageEngine = kingpin.Flag(
 		"storage-engine", "storage engine to keep the metrics metadata in",
@@ -105,6 +114,8 @@ func main() {
 		UpdateParallelism:        *updateParallelism,
 		EnableStatusPage:         *enableStatusPage,
 		StorageEngine:            *storageEngine,
+		SyncPeriod:               *syncPeriod,
+		SyncCleanupAfter:         *syncCleanupAfter,
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +127,39 @@ func main() {
 	http.HandleFunc("/cleanup", func(w http.ResponseWriter, r *http.Request) {
 		cleanupHandler(w, r, config)
 	})
+
+	// Run a sync loop for standalone use
+	if !env.IsAppEngine() {
+		log.Debug("Running outside of appengine, starting up a sync loop...")
+		ctx, cancel := context.WithCancel(context.Background())
+		count := 0
+		go func() {
+			defer cancel()
+			for {
+				select {
+				case <-time.After(config.Options.SyncPeriod):
+					ctx, cancel := context.WithTimeout(ctx, *updateTimeout)
+					log.WithContext(ctx).Debugf("Running sync...")
+					if err := sync(ctx, config); err != nil {
+						log.WithContext(ctx).Errorf("error running sync() routine: %v", err)
+					}
+					// perform a cleanup every nth cycle
+					if count == config.Options.SyncCleanupAfter {
+						log.WithContext(ctx).Debugf("Running cleanup...")
+						if err := cleanup(ctx, config); err != nil {
+							log.WithContext(ctx).Errorf("error running the cleanup() routine: %v", err)
+							return
+						}
+						count = 0
+					}
+					count++
+					cancel()
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
 
 	// Build a connection string, e.g. ":8080"
 	conn := net.JoinHostPort("", strconv.Itoa(*port))

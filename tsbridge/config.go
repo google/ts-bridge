@@ -18,6 +18,8 @@ type ConfigOptions struct {
 	SDLookBackInterval       time.Duration
 	StorageEngine            string
 	UpdateParallelism        int
+	SyncPeriod               time.Duration
+	SyncCleanupAfter         int
 }
 
 func NewConfig(options *ConfigOptions) *Config {
