@@ -18,12 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/ts-bridge/boltdb"
-	"github.com/google/ts-bridge/datastore"
-	"github.com/google/ts-bridge/env"
-	"github.com/google/ts-bridge/stackdriver"
-	"github.com/google/ts-bridge/storage"
-	"github.com/google/ts-bridge/tsbridge"
 	"html/template"
 	"net"
 	"net/http"
@@ -31,6 +25,13 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/google/ts-bridge/boltdb"
+	"github.com/google/ts-bridge/datastore"
+	"github.com/google/ts-bridge/env"
+	"github.com/google/ts-bridge/stackdriver"
+	"github.com/google/ts-bridge/storage"
+	"github.com/google/ts-bridge/tsbridge"
+
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -95,9 +96,26 @@ func main() {
 		log.Fatalf("Invalid flags: %v", err)
 	}
 
-	http.HandleFunc("/", index)
-	http.HandleFunc("/sync", sync)
-	http.HandleFunc("/cleanup", cleanup)
+	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
+		Filename:                 *metricConfig,
+		MinPointAge:              *minPointAge,
+		CounterResetInterval:     *counterResetInterval,
+		SDLookBackInterval:       *sdLookBackInterval,
+		SDInternalMetricsProject: *sdInternalMetricsProject,
+		UpdateParallelism:        *updateParallelism,
+		EnableStatusPage:         *enableStatusPage,
+		StorageEngine:            *storageEngine,
+	})
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		index(w, r, config)
+	})
+	http.HandleFunc("/sync", func(w http.ResponseWriter, r *http.Request) {
+		syncHandler(w, r, config)
+	})
+	http.HandleFunc("/cleanup", func(w http.ResponseWriter, r *http.Request) {
+		cleanupHandler(w, r, config)
+	})
 
 	// Build a connection string, e.g. ":8080"
 	conn := net.JoinHostPort("", strconv.Itoa(*port))
@@ -117,8 +135,8 @@ func validateFlags() error {
 	return nil
 }
 
-// sync updates all configured metrics. It's triggered by App Engine Cron.
-func sync(w http.ResponseWriter, r *http.Request) {
+// syncHandler is an HTTP wrapper around sync() method that is designed to be triggered by App Engine Cron.
+func syncHandler(w http.ResponseWriter, r *http.Request, config *tsbridge.Config) {
 	ctx := r.Context()
 
 	ctx, cancel := context.WithTimeout(ctx, *updateTimeout)
@@ -129,42 +147,45 @@ func sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storage, err := loadStorageEngine(ctx)
-	if err != nil {
+	if err := sync(ctx, config); err != nil {
 		logAndReturnError(ctx, w, err)
-		return
-	}
-	defer storage.Close()
-
-	config, err := newRuntimeConfig(ctx, storage)
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-
-	sd, err := stackdriver.NewAdapter(ctx, *sdLookBackInterval)
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-	defer sd.Close()
-
-	stats, err := tsbridge.NewCollector(ctx, *sdInternalMetricsProject)
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-	defer stats.Close()
-
-	if errs := tsbridge.UpdateAllMetrics(ctx, config, sd, *updateParallelism, stats); errs != nil {
-		msg := strings.Join(errs, "; ")
-		logAndReturnError(ctx, w, errors.New(msg))
-		return
 	}
 }
 
-// cleanup removes obsolete metric records. It is triggered by App Engine Cron.
-func cleanup(w http.ResponseWriter, r *http.Request) {
+// sync updates all configured metrics.
+func sync(ctx context.Context, config *tsbridge.Config) error {
+	store, err := loadStorageEngine(ctx)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+
+	metrics, err := tsbridge.NewMetricConfig(ctx, config, store)
+	if err != nil {
+		return err
+	}
+
+	sd, err := stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
+	if err != nil {
+		return err
+	}
+	defer sd.Close()
+
+	stats, err := tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject)
+	if err != nil {
+		return err
+	}
+	defer stats.Close()
+
+	if errs := tsbridge.UpdateAllMetrics(ctx, metrics, sd, config.Options.UpdateParallelism, stats); errs != nil {
+		msg := strings.Join(errs, "; ")
+		return errors.New(msg)
+	}
+	return nil
+}
+
+// cleanupHandler is an HTTP wrapper around cleanup() method that is designed to be triggered by App Engine Cron.
+func cleanupHandler(w http.ResponseWriter, r *http.Request, config *tsbridge.Config) {
 	ctx := r.Context()
 
 	if env.IsAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
@@ -172,32 +193,39 @@ func cleanup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storage, err := loadStorageEngine(ctx)
-	if err != nil {
+	if err := cleanup(ctx, config); err != nil {
 		logAndReturnError(ctx, w, err)
 		return
-	}
-	defer storage.Close()
-
-	config, err := newRuntimeConfig(ctx, storage)
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-
-	var metricNames []string
-	for _, m := range config.Metrics() {
-		metricNames = append(metricNames, m.Name)
-	}
-
-	if err := storage.CleanupRecords(ctx, metricNames); err != nil {
-		logAndReturnError(ctx, w, err)
 	}
 }
 
+// cleanup removes obsolete metric records. It is triggered by App Engine Cron.
+func cleanup(ctx context.Context, config *tsbridge.Config) error {
+	store, err := loadStorageEngine(ctx)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+
+	metrics, err := tsbridge.NewMetricConfig(ctx, config, store)
+	if err != nil {
+		return err
+	}
+
+	var metricNames []string
+	for _, m := range metrics.Metrics() {
+		metricNames = append(metricNames, m.Name)
+	}
+
+	if err := store.CleanupRecords(ctx, metricNames); err != nil {
+		return err
+	}
+	return nil
+}
+
 // index shows a web page with metric import status.
-func index(w http.ResponseWriter, r *http.Request) {
-	if *enableStatusPage != true {
+func index(w http.ResponseWriter, r *http.Request, config *tsbridge.Config) {
+	if config.Options.EnableStatusPage != true {
 		http.Error(w, "Status page is disabled. Please set ENABLE_STATUS_PAGE or --enable-status-page flag to to enable it.",
 			http.StatusNotFound)
 		return
@@ -212,7 +240,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 	defer storage.Close()
 
-	config, err := newRuntimeConfig(ctx, storage)
+	metrics, err := tsbridge.NewMetricConfig(ctx, config, storage)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return
@@ -224,24 +252,9 @@ func index(w http.ResponseWriter, r *http.Request) {
 		logAndReturnError(ctx, w, err)
 		return
 	}
-	if err := t.Execute(w, config.Metrics()); err != nil {
+	if err := t.Execute(w, metrics.Metrics()); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
-}
-
-// newRuntimeConfig initializes and returns tsbridge config
-func newRuntimeConfig(ctx context.Context, storage storage.Manager) (*tsbridge.MetricConfig, error) {
-	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
-		Filename:                 *metricConfig,
-		MinPointAge:              *minPointAge,
-		CounterResetInterval:     *counterResetInterval,
-		SDLookBackInterval:       *sdLookBackInterval,
-		SDInternalMetricsProject: *sdInternalMetricsProject,
-		UpdateParallelism:        *updateParallelism,
-		EnableStatusPage:         *enableStatusPage,
-		StorageEngine:            *storageEngine,
-	})
-	return tsbridge.NewMetricConfig(ctx, config, storage)
 }
 
 // Since some URLs are triggered by App Engine cron, error messages returned in HTTP response
