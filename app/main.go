@@ -16,21 +16,15 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"html/template"
+	"github.com/google/ts-bridge/tasks"
+	"github.com/google/ts-bridge/web"
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
-	"github.com/google/ts-bridge/boltdb"
-	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/env"
-	"github.com/google/ts-bridge/stackdriver"
-	"github.com/google/ts-bridge/storage"
 	"github.com/google/ts-bridge/tsbridge"
 
 	log "github.com/sirupsen/logrus"
@@ -74,12 +68,8 @@ var (
 	).Envar("SD_PROJECT_FOR_INTERNAL_METRICS").String()
 
 	syncPeriod = kingpin.Flag(
-		"sync-period", "How often to sync metrics when running in standalone mode",
+		"sync-period", "Interval between syncs when running in standalone mode",
 	).Envar("SYNC_PERIOD").Default("60s").Duration()
-
-	syncCleanupAfter = kingpin.Flag(
-		"sync-cleanup-after", "Run cleanup after X sync loops",
-	).Envar("SYNC_CLEANUP_AFTER").Default("100").Int()
 
 	// Storage options
 	storageEngine = kingpin.Flag(
@@ -112,53 +102,30 @@ func main() {
 		SDLookBackInterval:       *sdLookBackInterval,
 		SDInternalMetricsProject: *sdInternalMetricsProject,
 		UpdateParallelism:        *updateParallelism,
+		UpdateTimeout:            *updateTimeout,
 		EnableStatusPage:         *enableStatusPage,
 		StorageEngine:            *storageEngine,
 		SyncPeriod:               *syncPeriod,
-		SyncCleanupAfter:         *syncCleanupAfter,
 	})
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		index(w, r, config)
-	})
-	http.HandleFunc("/sync", func(w http.ResponseWriter, r *http.Request) {
-		syncHandler(w, r, config)
-	})
-	http.HandleFunc("/cleanup", func(w http.ResponseWriter, r *http.Request) {
-		cleanupHandler(w, r, config)
-	})
+	h := web.NewHandler(config)
+
+	http.HandleFunc("/", h.Index)
+	http.HandleFunc("/sync", h.Sync)
+	http.HandleFunc("/cleanup", h.Cleanup)
+
+	// Run a cleanup on startup
+	log.Debugf("Performing startup cleanup...")
+	if err := tasks.Cleanup(context.Background(), config); err != nil {
+		log.Fatalf("error running the Cleanup() routine: %v", err)
+	}
 
 	// Run a sync loop for standalone use
+	// TODO(temikus): refactor this to run exactly every SyncPeriod and skip sync if one is already active
 	if !env.IsAppEngine() {
 		log.Debug("Running outside of appengine, starting up a sync loop...")
 		ctx, cancel := context.WithCancel(context.Background())
-		count := 0
-		go func() {
-			defer cancel()
-			for {
-				select {
-				case <-time.After(config.Options.SyncPeriod):
-					ctx, cancel := context.WithTimeout(ctx, *updateTimeout)
-					log.WithContext(ctx).Debugf("Running sync...")
-					if err := sync(ctx, config); err != nil {
-						log.WithContext(ctx).Errorf("error running sync() routine: %v", err)
-					}
-					// perform a cleanup every nth cycle
-					if count == config.Options.SyncCleanupAfter {
-						log.WithContext(ctx).Debugf("Running cleanup...")
-						if err := cleanup(ctx, config); err != nil {
-							log.WithContext(ctx).Errorf("error running the cleanup() routine: %v", err)
-							return
-						}
-						count = 0
-					}
-					count++
-					cancel()
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
+		go syncLoop(ctx, cancel, config)
 	}
 
 	// Build a connection string, e.g. ":8080"
@@ -170,6 +137,23 @@ func main() {
 
 }
 
+func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config) {
+	defer cancel()
+	for {
+		select {
+		case <-time.After(config.Options.SyncPeriod):
+			ctx, cancel := context.WithTimeout(ctx, config.Options.UpdateTimeout)
+			log.WithContext(ctx).Debugf("Running sync...")
+			if err := tasks.Sync(ctx, config); err != nil {
+				log.WithContext(ctx).Errorf("error running sync() routine: %v", err)
+			}
+			cancel()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 func validateFlags() error {
 	// Verify if updateParallelism is within bounds.
 	//   Note: bounds have been chosen arbitrarily.
@@ -177,151 +161,4 @@ func validateFlags() error {
 		return fmt.Errorf("expected --update-parallelism|UPDATE_PARALLELISM between 1 and 100; got %d", *updateParallelism)
 	}
 	return nil
-}
-
-// syncHandler is an HTTP wrapper around sync() method that is designed to be triggered by App Engine Cron.
-func syncHandler(w http.ResponseWriter, r *http.Request, config *tsbridge.Config) {
-	ctx := r.Context()
-
-	ctx, cancel := context.WithTimeout(ctx, *updateTimeout)
-	defer cancel()
-
-	if env.IsAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
-		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
-		return
-	}
-
-	if err := sync(ctx, config); err != nil {
-		logAndReturnError(ctx, w, err)
-	}
-}
-
-// sync updates all configured metrics.
-func sync(ctx context.Context, config *tsbridge.Config) error {
-	store, err := loadStorageEngine(ctx)
-	if err != nil {
-		return err
-	}
-	defer store.Close()
-
-	metrics, err := tsbridge.NewMetricConfig(ctx, config, store)
-	if err != nil {
-		return err
-	}
-
-	sd, err := stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
-	if err != nil {
-		return err
-	}
-	defer sd.Close()
-
-	stats, err := tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject)
-	if err != nil {
-		return err
-	}
-	defer stats.Close()
-
-	if errs := tsbridge.UpdateAllMetrics(ctx, metrics, sd, config.Options.UpdateParallelism, stats); errs != nil {
-		msg := strings.Join(errs, "; ")
-		return errors.New(msg)
-	}
-	return nil
-}
-
-// cleanupHandler is an HTTP wrapper around cleanup() method that is designed to be triggered by App Engine Cron.
-func cleanupHandler(w http.ResponseWriter, r *http.Request, config *tsbridge.Config) {
-	ctx := r.Context()
-
-	if env.IsAppEngine() && r.Header.Get("X-Appengine-Cron") != "true" {
-		http.Error(w, "Only cron requests are allowed here", http.StatusUnauthorized)
-		return
-	}
-
-	if err := cleanup(ctx, config); err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-}
-
-// cleanup removes obsolete metric records. It is triggered by App Engine Cron.
-func cleanup(ctx context.Context, config *tsbridge.Config) error {
-	store, err := loadStorageEngine(ctx)
-	if err != nil {
-		return err
-	}
-	defer store.Close()
-
-	metrics, err := tsbridge.NewMetricConfig(ctx, config, store)
-	if err != nil {
-		return err
-	}
-
-	var metricNames []string
-	for _, m := range metrics.Metrics() {
-		metricNames = append(metricNames, m.Name)
-	}
-
-	if err := store.CleanupRecords(ctx, metricNames); err != nil {
-		return err
-	}
-	return nil
-}
-
-// index shows a web page with metric import status.
-func index(w http.ResponseWriter, r *http.Request, config *tsbridge.Config) {
-	if config.Options.EnableStatusPage != true {
-		http.Error(w, "Status page is disabled. Please set ENABLE_STATUS_PAGE or --enable-status-page flag to to enable it.",
-			http.StatusNotFound)
-		return
-	}
-
-	ctx := r.Context()
-
-	storage, err := loadStorageEngine(ctx)
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-	defer storage.Close()
-
-	metrics, err := tsbridge.NewMetricConfig(ctx, config, storage)
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-
-	funcMap := template.FuncMap{"humantime": humanize.Time}
-	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("app/index.html")
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-	if err := t.Execute(w, metrics.Metrics()); err != nil {
-		logAndReturnError(ctx, w, err)
-	}
-}
-
-// Since some URLs are triggered by App Engine cron, error messages returned in HTTP response
-// might not be visible to humans. We need to log them as well, and this helper function does that.
-func logAndReturnError(ctx context.Context, w http.ResponseWriter, err error) {
-	log.WithContext(ctx).WithError(err)
-	http.Error(w, err.Error(), http.StatusInternalServerError)
-}
-
-// Helper function to load the correct storage manager depending on settings
-func loadStorageEngine(ctx context.Context) (storage.Manager, error) {
-	switch *storageEngine {
-	case "datastore":
-		datastoreManager := datastore.New(ctx, &datastore.Options{Project: *datastoreProject})
-		return datastoreManager, nil
-	case "boltdb":
-		if env.IsAppEngine() {
-			return nil, fmt.Errorf("BoltDB storage is not supported on AppEngine")
-		}
-		opts := &boltdb.Options{DBPath: *boltdbPath}
-
-		return boltdb.New(opts), nil
-	default:
-		return nil, fmt.Errorf("unknown storage engine selected: %s", *storageEngine)
-	}
 }

@@ -17,9 +17,11 @@ type ConfigOptions struct {
 	SDInternalMetricsProject string
 	SDLookBackInterval       time.Duration
 	StorageEngine            string
+	BoltdbPath               string
+	DatastoreProject         string
 	UpdateParallelism        int
+	UpdateTimeout            time.Duration
 	SyncPeriod               time.Duration
-	SyncCleanupAfter         int
 }
 
 func NewConfig(options *ConfigOptions) *Config {

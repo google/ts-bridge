@@ -92,7 +92,7 @@ func NewMetricConfig(ctx context.Context, config *Config, storage storage.Manage
 			return nil, fmt.Errorf("configuration file contains several destinations named '%s'", d.Name)
 		}
 		if d.ProjectID == "" {
-			d.ProjectID = env.GoogleCloudProject()
+			d.ProjectID = env.AppEngineProject()
 		}
 		if d.ProjectID == "" {
 			return nil, fmt.Errorf("please provide project_id for destination '%s'", d.Name)
