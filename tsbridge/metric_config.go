@@ -20,13 +20,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/ts-bridge/datadog"
+	"github.com/google/ts-bridge/env"
 	"github.com/google/ts-bridge/influxdb"
 	"github.com/google/ts-bridge/storage"
 	log "github.com/sirupsen/logrus"
 	validator "gopkg.in/validator.v2"
 	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
-	"os"
 )
 
 // MetricConfig is what the YAML configuration file gets deserialized to.
@@ -92,7 +92,7 @@ func NewMetricConfig(ctx context.Context, config *Config, storage storage.Manage
 			return nil, fmt.Errorf("configuration file contains several destinations named '%s'", d.Name)
 		}
 		if d.ProjectID == "" {
-			d.ProjectID = projectID()
+			d.ProjectID = env.GoogleCloudProject()
 		}
 		if d.ProjectID == "" {
 			return nil, fmt.Errorf("please provide project_id for destination '%s'", d.Name)
@@ -145,13 +145,4 @@ func NewMetricConfig(ctx context.Context, config *Config, storage storage.Manage
 
 	log.WithContext(ctx).Debugf("Read %d metrics and %d destinations from the config file", len(metrics), len(destinations))
 	return c, nil
-}
-
-// projectID returns the name of the GCP project that code is running in.
-func projectID() string {
-	value, exists := os.LookupEnv("GOOGLE_CLOUD_PROJECT")
-	if !exists {
-		return ""
-	}
-	return value
 }
