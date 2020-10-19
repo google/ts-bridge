@@ -1,3 +1,4 @@
+// Package env deals with inferring the GCP environment and its settings.
 package env
 
 import "os"

@@ -57,7 +57,7 @@ type StackdriverAdapter interface {
 }
 
 // UpdateAllMetrics updates all metrics listed in a given config.
-func UpdateAllMetrics(ctx context.Context, c *Config, sd StackdriverAdapter, parallelism int, s *StatsCollector) (errors []string) {
+func UpdateAllMetrics(ctx context.Context, c *MetricConfig, sd StackdriverAdapter, parallelism int, s *StatsCollector) (errors []string) {
 	oldestWrite := time.Now()
 	defer func(start time.Time) {
 		stats.Record(ctx, s.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
