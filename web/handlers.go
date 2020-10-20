@@ -3,18 +3,25 @@ package web
 
 import (
 	"context"
-	"github.com/google/ts-bridge/tasks"
-	log "github.com/sirupsen/logrus"
+	"encoding/json"
+	"fmt"
 	"html/template"
 	"net/http"
 
-	"github.com/dustin/go-humanize"
 	"github.com/google/ts-bridge/env"
+	"github.com/google/ts-bridge/tasks"
 	"github.com/google/ts-bridge/tsbridge"
+
+	"github.com/dustin/go-humanize"
+	log "github.com/sirupsen/logrus"
 )
 
 type Handler struct {
 	config *tsbridge.Config
+}
+
+type HealthResponse struct {
+	Status string `json:"status,omitempty"`
 }
 
 func NewHandler(config *tsbridge.Config) *Handler {
@@ -51,6 +58,27 @@ func (h *Handler) Cleanup(w http.ResponseWriter, r *http.Request) {
 		logAndReturnError(ctx, w, err)
 		return
 	}
+}
+
+// Health is a simple healthcheck endpoint.
+func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "This endpoint supports only GET and HEAD requests", http.StatusMethodNotAllowed)
+		return
+	}
+
+	response, err := json.Marshal(HealthResponse{"ok"})
+	if err != nil {
+		logAndReturnError(ctx, w, fmt.Errorf("failed to marshal health check response into JSON: %v", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
 }
 
 // Index shows a web page with metric import status.
