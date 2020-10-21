@@ -113,6 +113,7 @@ func main() {
 	http.HandleFunc("/", h.Index)
 	http.HandleFunc("/sync", h.Sync)
 	http.HandleFunc("/cleanup", h.Cleanup)
+	http.HandleFunc("/health", h.Health)
 
 	// Run a cleanup on startup
 	log.Debugf("Performing startup cleanup...")
