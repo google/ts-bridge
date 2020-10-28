@@ -21,6 +21,7 @@ import (
 	"github.com/google/ts-bridge/web"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -37,7 +38,7 @@ var (
 
 	metricConfig = kingpin.Flag(
 		"metric-config", "metric configuration file path",
-	).Envar("CONFIG_FILE").Default("metrics.yaml").String()
+	).Envar("METRIC_CONFIG").Default("metrics.yaml").String()
 
 	enableStatusPage = kingpin.Flag(
 		"enable-status-page", "enable ts-bridge server status page",
@@ -63,9 +64,9 @@ var (
 		"counter-reset-interval", "how often to reset 'start time' to keep the query time window small enough to avoid aggregation.",
 	).Envar("COUNTER_RESET_INTERVAL").Default("30m").Duration()
 
-	sdInternalMetricsProject = kingpin.Flag(
+	statsSDProject = kingpin.Flag(
 		"stats-sd-project", "Stackdriver project for internal ts-bridge metrics",
-	).Envar("SD_PROJECT_FOR_INTERNAL_METRICS").String()
+	).Envar("STATS_SD_PROJECT").String()
 
 	syncPeriod = kingpin.Flag(
 		"sync-period", "Interval between syncs when running in standalone mode",
@@ -86,6 +87,9 @@ var (
 func main() {
 	kingpin.Parse()
 
+	processLegacyStringVar("CONFIG_FILE", metricConfig, "METRIC_CONFIG")
+	processLegacyStringVar("SD_PROJECT_FOR_INTERNAL_METRICS", statsSDProject, "STATS_SD_PROJECT")
+
 	if *debug {
 		log.SetLevel(log.DebugLevel)
 		log.Debug("Debug logging enabled...")
@@ -100,7 +104,7 @@ func main() {
 		MinPointAge:              *minPointAge,
 		CounterResetInterval:     *counterResetInterval,
 		SDLookBackInterval:       *sdLookBackInterval,
-		SDInternalMetricsProject: *sdInternalMetricsProject,
+		SDInternalMetricsProject: *statsSDProject,
 		UpdateParallelism:        *updateParallelism,
 		UpdateTimeout:            *updateTimeout,
 		EnableStatusPage:         *enableStatusPage,
@@ -162,4 +166,14 @@ func validateFlags() error {
 		return fmt.Errorf("expected --update-parallelism|UPDATE_PARALLELISM between 1 and 100; got %d", *updateParallelism)
 	}
 	return nil
+}
+
+func processLegacyStringVar(legacyVar string, flag *string, replacement string) {
+	v := os.Getenv(legacyVar)
+	if v != "" {
+		log.Warnf("Legacy env option %v is set, it will be deprecated in next major version in favour of %v",
+			legacyVar, replacement)
+		// Dereference flag into a new value
+		*flag = v
+	}
 }
