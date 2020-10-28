@@ -4,8 +4,6 @@ source monitoring system (currently Datadog & InfluxDB) and writes
 new time series results into the destination system (currently only
 Stackdriver).
 
-ts-bridge is an App Engine Standard app written in Go.
-
 # Table of Contents
 
 1.  [Setup Guide](#setup-guide)
@@ -110,6 +108,46 @@ using a git repository and
     [Stackdriver UI](https://app.google.stackdriver.com/metrics-explorer)
 1.  Kill the local dev server
 1.  Revert `SD_PROJECT_FOR_INTERNAL_METRICS` to `""` in `app.yaml`
+
+## Docker
+
+### Authorization
+
+`ts-bridge` relies on [Google Cloud Go library](https://github.com/googleapis/google-cloud-go) to provide authorization
+and should support all options available for it. Generally, there are 3 ways you can do it:
+
+* Run `gcloud auth application-default login` (suitable for local development / dev environments)
+* Use `GOOGLE_APPLICATION_CREDENTIALS="[PATH]"` variable to point at the credentials
+* Using GCP platform-provided credentials, such as [Workload identity for GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity)
+
+For more information, see:
+
+* [google-cloud-go#authorization](https://github.com/googleapis/google-cloud-go#authorization)
+* [Default Application credentials in GCP](https://cloud.google.com/docs/authentication/production)
+
+### Building the image
+
+1. Build the image from the supplied `Dockerfile`:
+
+```
+docker build -t tsbridge:VERSION -t some-other-tag .
+```
+
+### Running the image
+
+The image sets `ts-bridge` binary as the entrypoint, so it can simply be run via cmd arguments with configuration files
+in working directory (`/ts-bridge`), e.g.:
+
+```
+docker run -v /path/to/gcp/creds.json:/ts-bridge/creds.json  -e \
+  -e "GOOGLE_APPLICATION_CREDENTIALS=/ts-bridge/graphite.json" \
+  -v ${PWD}:/ts-bridge tsbridge \
+  --storage-engine=boltdb \
+  --enable-status-page \
+  --stats-sd-project=my-amazing-project \
+  --update-parallelism=4 \
+  --sync-period=10s
+```
 
 ## Deploy In Production
 
