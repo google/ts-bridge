@@ -13,6 +13,7 @@ import (
 	"github.com/google/ts-bridge/tsbridge"
 
 	"github.com/dustin/go-humanize"
+	"github.com/gobuffalo/packr/v2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -81,6 +82,9 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
+// Generate static assets needed for Index handler so we can bundle them inside the executable
+//go:generate packr2 -v
+
 // Index shows a web page with metric import status.
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 	if h.config.Options.EnableStatusPage != true {
@@ -104,8 +108,15 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	box := packr.New("static", "./static")
+	s, err := box.FindString("index.html")
+	if err != nil {
+		logAndReturnError(ctx, w, fmt.Errorf("couldn't read precompiled asset: %v", err))
+		return
+	}
+
 	funcMap := template.FuncMap{"humantime": humanize.Time}
-	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("web/static/index.html")
+	t, err := template.New("index.html").Funcs(funcMap).Parse(s)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return

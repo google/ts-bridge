@@ -1,6 +1,6 @@
 language: go
 go:
-  - "1.13"
+  - 1.13.x
 env:
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
 install:
@@ -8,9 +8,13 @@ install:
   - $HOME/google-cloud-sdk/bin/gcloud components install beta cloud-datastore-emulator
   # JRE is needed for the datastore emulator
   - sudo apt-get install openjdk-8-jre-headless
+before_script:
+  # Modules are off for packr2 so the tooling doesn't write itself into go.sum
+  - GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
+  - packr2 version
+  - go get github.com/golang/mock/mockgen@v1.4.4
 script:
   - source $HOME/google-cloud-sdk/path.bash.inc
-  - go get github.com/golang/mock/mockgen@v1.4.4
   - go get ./...
   - go test -v -timeout=30s ./...
   - gofmt -w $(go list -f '{{.Dir}}' ./...)
