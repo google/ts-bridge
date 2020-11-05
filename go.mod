@@ -12,6 +12,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.0
+	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.2
@@ -24,8 +25,7 @@ require (
 	github.com/zorkian/go-datadog-api v2.29.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.22.4
-	golang.org/x/sys v0.0.0-20200916030750-2334cc1a136f // indirect
-	golang.org/x/tools v0.0.0-20200828161849-5deb26317202 // indirect
+	golang.org/x/tools v0.0.0-20201105001634-bc3cf281b174 // indirect
 	google.golang.org/api v0.30.0
 	google.golang.org/genproto v0.0.0-20200829155447-2bf3329a0021
 	google.golang.org/grpc v1.31.1

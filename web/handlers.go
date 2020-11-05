@@ -81,6 +81,12 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
+// TODO: this needs to be removed in favour of Embed.FS when it ships, see:
+// https://github.com/golang/go/issues/41191
+// https://go.googlesource.com/proposal/+/master/design/draft-embed.md
+// Generate static assets needed for index to be backed into executable
+//go:generate go-bindata -nometadata -o static_data.go -pkg web static/
+
 // Index shows a web page with metric import status.
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 	if h.config.Options.EnableStatusPage != true {
@@ -104,8 +110,13 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	index, err := Asset("static/index.html")
+	if err != nil {
+		log.Fatalf("Unable to load static assets needed for WebUI: %v", err)
+	}
+
 	funcMap := template.FuncMap{"humantime": humanize.Time}
-	t, err := template.New("index.html").Funcs(funcMap).ParseFiles("web/static/index.html")
+	t, err := template.New("index.html").Funcs(funcMap).Parse(string(index))
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return

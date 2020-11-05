@@ -10,8 +10,9 @@ install:
   - sudo apt-get install openjdk-8-jre-headless
 script:
   - source $HOME/google-cloud-sdk/path.bash.inc
-  - go get github.com/golang/mock/mockgen@v1.4.4
   - go mod download
+  - go install github.com/go-bindata/go-bindata/v3/go-bindata
+  - go install github.com/golang/mock/mockgen
   - go test -v -timeout=30s ./...
   - gofmt -w $(go list -f '{{.Dir}}' ./...)
   - go generate ./...
