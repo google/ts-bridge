@@ -18,7 +18,7 @@ import (
 	"context"
 
 	monitoring "cloud.google.com/go/monitoring/apiv3"
-	"github.com/google/ts-bridge/version/version"
+	"github.com/google/ts-bridge/version"
 	"google.golang.org/api/iterator"
 	option "google.golang.org/api/option"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
