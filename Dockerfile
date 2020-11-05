@@ -3,10 +3,12 @@ FROM golang:alpine AS builder
 
 WORKDIR /go/src/ts-bridge
 
-COPY . .
+# Copy go.mod and go.sum first so we can cache this layer unless deps changed or have been added
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
 
-RUN go get -d -v ./...
-RUN go install -v ./...
+COPY . .
 
 RUN go build -o /go/bin/ts-bridge ./app
 
