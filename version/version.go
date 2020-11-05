@@ -1,3 +1,5 @@
+// Version records the verion of the ts-bridge project.
+// It also includes helper methods to return a user-agent that can be used in requests.
 package version
 
 import (

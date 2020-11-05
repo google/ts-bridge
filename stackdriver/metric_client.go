@@ -18,7 +18,9 @@ import (
 	"context"
 
 	monitoring "cloud.google.com/go/monitoring/apiv3"
+	"github.com/google/ts-bridge/version/version"
 	"google.golang.org/api/iterator"
+	option "google.golang.org/api/option"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 )
@@ -30,7 +32,10 @@ type client struct {
 
 // NewClient returns a new client.
 func newClient(ctx context.Context) (*client, error) {
-	sd, err := monitoring.NewMetricClient(ctx)
+	opts := []option.ClientOption{
+		option.WithUserAgent(version.UserAgent()),
+	}
+	sd, err := monitoring.NewMetricClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
