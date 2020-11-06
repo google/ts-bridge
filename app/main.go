@@ -17,16 +17,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/google/ts-bridge/tasks"
-	"github.com/google/ts-bridge/web"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/google/ts-bridge/tasks"
+	"github.com/google/ts-bridge/web"
+
 	"github.com/google/ts-bridge/env"
 	"github.com/google/ts-bridge/tsbridge"
+	"github.com/google/ts-bridge/version"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -82,6 +84,8 @@ var (
 	).Envar("DATASTORE_PROJECT").String()
 
 	boltdbPath = kingpin.Flag("boltdb-path", "path to BoltDB store, e.g. /data/bolt.db").Envar("BOLTDB_PATH").String()
+
+	ver = kingpin.Flag("version", "print the current version revision").Bool()
 )
 
 func main() {
@@ -97,6 +101,10 @@ func main() {
 
 	if err := validateFlags(); err != nil {
 		log.Fatalf("Invalid flags: %v", err)
+	}
+
+	if *ver {
+		fmt.Printf("Running %s version %s", version.Project, version.Revision())
 	}
 
 	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
