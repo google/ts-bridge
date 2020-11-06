@@ -91,6 +91,11 @@ var (
 func main() {
 	kingpin.Parse()
 
+	if *ver {
+		fmt.Printf("%s", version.Revision())
+		return
+	}
+
 	processLegacyStringVar("CONFIG_FILE", metricConfig, "METRIC_CONFIG")
 	processLegacyStringVar("SD_PROJECT_FOR_INTERNAL_METRICS", statsSDProject, "STATS_SD_PROJECT")
 
@@ -101,10 +106,6 @@ func main() {
 
 	if err := validateFlags(); err != nil {
 		log.Fatalf("Invalid flags: %v", err)
-	}
-
-	if *ver {
-		fmt.Printf("Running %s version %s", version.Project, version.Revision())
 	}
 
 	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
