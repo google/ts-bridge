@@ -17,16 +17,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/google/ts-bridge/tasks"
-	"github.com/google/ts-bridge/web"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/google/ts-bridge/tasks"
+	"github.com/google/ts-bridge/web"
+
 	"github.com/google/ts-bridge/env"
 	"github.com/google/ts-bridge/tsbridge"
+	"github.com/google/ts-bridge/version"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -82,10 +84,17 @@ var (
 	).Envar("DATASTORE_PROJECT").String()
 
 	boltdbPath = kingpin.Flag("boltdb-path", "path to BoltDB store, e.g. /data/bolt.db").Envar("BOLTDB_PATH").String()
+
+	ver = kingpin.Flag("version", "print the current version revision").Bool()
 )
 
 func main() {
 	kingpin.Parse()
+
+	if *ver {
+		fmt.Printf("%s", version.Revision())
+		return
+	}
 
 	processLegacyStringVar("CONFIG_FILE", metricConfig, "METRIC_CONFIG")
 	processLegacyStringVar("SD_PROJECT_FOR_INTERNAL_METRICS", statsSDProject, "STATS_SD_PROJECT")
