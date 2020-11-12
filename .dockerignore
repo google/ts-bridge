@@ -3,3 +3,4 @@
 bolt.db
 metrics.yaml
 Vagrantfile
+k8s/**/*
