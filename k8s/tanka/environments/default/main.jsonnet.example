@@ -1,0 +1,43 @@
+// Import kubernetes library
+(import 'k.libsonnet') +
+(import 'tsbridge.jsonnet') +
+{
+  _config:: {
+    tsbridge: {
+      // Deployment name (used as suffix for k8s objects)
+      name: 'ts-bridge',
+      // TS-Bridge image source
+      // TODO(temikus): add public image to example as soon as it's published
+      image: 'IMAGE_SOURCE_HERE',
+      // Pod memory limit
+      memoryLimit: '1Gi',
+      // Pod memory request
+      memoryRequest: '500Mi',
+      // Whether to expose webUI via a basic ClusterIP service
+      expose: true,
+      // Binary arguments
+      args: [
+        '--storage-engine=boltdb',
+        '--enable-status-page',
+        '--stats-sd-project=REPLACE_ME',
+        '--update-parallelism=4',
+        '--sync-period=10s',
+      ],
+      auth: {
+        // Path to JSON Service account key which will be automatically parsed into an opaque k8s secret
+        serviceAccountJsonPath: (importstr '/path/to/gcp/account_key.json'),
+        serviceAccountJsonSecret: std.base64(self.serviceAccountJsonPath),
+      },
+      persistence: {
+        // Enable persistent storage for /ts-bridge working directory, e.g. to keep BoltDB data
+        enabled: true,
+        storageClassName: 'ssd-backed',
+        provisioner: 'kubernetes.io/gce-pd',
+        storageClassParameters: {
+          type: 'pd-ssd',
+        },
+        volumeSize: '100Gi',
+      },
+    },
+  },
+}

@@ -139,14 +139,17 @@ The image sets `ts-bridge` binary as the entrypoint, so it can simply be run via
 in working directory (`/ts-bridge`), e.g.:
 
 ```
-docker run -v /path/to/gcp/creds.json:/ts-bridge/creds.json  -e \
-  -e "GOOGLE_APPLICATION_CREDENTIALS=/ts-bridge/graphite.json" \
-  -v ${PWD}:/ts-bridge tsbridge \
-  --storage-engine=boltdb \
-  --enable-status-page \
-  --stats-sd-project=my-amazing-project \
-  --update-parallelism=4 \
-  --sync-period=10s
+docker run -p 8080:8080 \                                                                                                                                                                                               (2)
+ -v ${PWD}/metrics.yaml:/ts-bridge/metrics.yaml \
+ -v ~/.gcp/my-account-key.json:/ts-bridge/gcp_account_key.json \
+ -e "GOOGLE_APPLICATION_CREDENTIALS=/ts-bridge/gcp_account_key.json" \
+ ts-bridge:VERSION \
+ --debug \
+ --storage-engine=boltdb \
+ --enable-status-page \
+ --stats-sd-project=my-project \
+ --update-parallelism=4 \
+ --sync-period=10s
 ```
 
 ## Deploy In Production

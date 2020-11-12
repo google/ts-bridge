@@ -1,0 +1,70 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ts-bridge
+spec:
+  selector:
+    matchLabels:
+      app: ts-bridge
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ts-bridge
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - image: REPLACE_ME
+          name: ts-bridge
+          env:
+            # Use secret in real usage
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /etc/gcp/google_key.json
+          args:
+            - --storage-engine=boltdb
+            - --enable-status-page
+            - --stats-sd-project=REPLACE_ME
+            - --update-parallelism=4
+            - --sync-period=10s
+          ports:
+            - containerPort: 8080
+              name: ts-bridge
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          volumeMounts:
+            - name: ts-bridge-persistent-storage
+              mountPath: /ts-bridge
+            - name: ts-bridge-config-volume
+              mountPath: /ts-bridge/metrics.yaml
+              subPath: metrics.yaml
+            - name: service-account-credentials-volume
+              mountPath: /etc/gcp
+              readOnly: true
+      volumes:
+        - name: ts-bridge-persistent-storage
+          persistentVolumeClaim:
+            claimName: ts-bridge-pv-claim
+        - name: ts-bridge-config-volume
+          configMap:
+            name: ts-bridge-config
+        - name: service-account-credentials-volume
+          secret:
+            secretName: google-api-credentials
+            items:
+            - key: json_key
+              path: google_key.json
