@@ -30,6 +30,7 @@ import (
 	"github.com/google/ts-bridge/tsbridge"
 	"github.com/google/ts-bridge/version"
 
+	"cloud.google.com/go/profiler"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -83,6 +84,10 @@ var (
 		"datastore-project", "GCP Project to use for communicating with Datastore",
 	).Envar("DATASTORE_PROJECT").String()
 
+	enableCloudProfiler = kingpin.Flag(
+		"enable-cloud-profiler", "Enable GCP Cloud profiler",
+	).Envar("ENABLE_CLOUD_PROFILER").Bool()
+
 	boltdbPath = kingpin.Flag("boltdb-path", "path to BoltDB store, e.g. /data/bolt.db").Envar("BOLTDB_PATH").String()
 
 	ver = kingpin.Flag("version", "print the current version revision").Bool()
@@ -90,6 +95,10 @@ var (
 
 func main() {
 	kingpin.Parse()
+
+	if *enableCloudProfiler {
+		startCloudProfiler()
+	}
 
 	if *ver {
 		fmt.Printf("%s", version.Revision())
@@ -184,5 +193,19 @@ func processLegacyStringVar(legacyVar string, flag *string, replacement string) 
 			legacyVar, replacement)
 		// Dereference flag into a new value
 		*flag = v
+	}
+}
+
+func startCloudProfiler() {
+	// Note: this will work only while running in GCP, `project` parameter will need to be piped in if standalone
+	// profiling is needed
+	cfg := profiler.Config{
+		Service:        "ts-bridge",
+		ServiceVersion: version.Revision(),
+	}
+
+	// Profiler initialization, best done as early as possible.
+	if err := profiler.Start(cfg); err != nil {
+		log.Warningf("unable to start cloud profiler: %v", err)
 	}
 }
