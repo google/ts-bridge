@@ -5,13 +5,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
+	"sync"
+
 	"github.com/google/ts-bridge/boltdb"
 	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/env"
 	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/storage"
 	"github.com/google/ts-bridge/tsbridge"
-	"strings"
 )
 
 // LoadStorageEngine is a helper function to load the correct storage manager depending on settings
@@ -32,6 +35,11 @@ func LoadStorageEngine(ctx context.Context, config *tsbridge.Config) (storage.Ma
 	}
 }
 
+var (
+	sdClient     *stackdriver.Adapter
+	sdClientOnce sync.Once
+)
+
 // Sync updates all configured metrics.
 func Sync(ctx context.Context, config *tsbridge.Config) error {
 	store, err := LoadStorageEngine(ctx, config)
@@ -45,11 +53,12 @@ func Sync(ctx context.Context, config *tsbridge.Config) error {
 		return err
 	}
 
-	sd, err := stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
-	if err != nil {
-		return err
-	}
-	defer sd.Close()
+	sdClientOnce.Do(func() {
+		sdClient, err = stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
 
 	stats, err := tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject)
 	if err != nil {
@@ -57,7 +66,7 @@ func Sync(ctx context.Context, config *tsbridge.Config) error {
 	}
 	defer stats.Close()
 
-	if errs := tsbridge.UpdateAllMetrics(ctx, metrics, sd, config.Options.UpdateParallelism, stats); errs != nil {
+	if errs := tsbridge.UpdateAllMetrics(ctx, metrics, sdClient, config.Options.UpdateParallelism, stats); errs != nil {
 		msg := strings.Join(errs, "; ")
 		return errors.New(msg)
 	}
