@@ -19,24 +19,29 @@ import (
 	"fmt"
 	"time"
 
+	monitoring "cloud.google.com/go/monitoring/apiv3"
+	"github.com/golang/protobuf/ptypes"
+	gax "github.com/googleapis/gax-go/v2"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
+	metricpb "google.golang.org/genproto/googleapis/api/metric"
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/golang/protobuf/ptypes"
-	log "github.com/sirupsen/logrus"
-	metricpb "google.golang.org/genproto/googleapis/api/metric"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
+	"github.com/google/ts-bridge/version"
 )
 
 //go:generate mockgen -destination=../mocks/mock_sd_metric_client.go -package=mocks github.com/google/ts-bridge/stackdriver MetricClient
 
 // MetricClient defines Stackdriver functions used by the metric adapter.
 type MetricClient interface {
-	CreateMetricDescriptor(context.Context, *monitoringpb.CreateMetricDescriptorRequest) (*metricpb.MetricDescriptor, error)
-	GetMetricDescriptor(context.Context, *monitoringpb.GetMetricDescriptorRequest) (*metricpb.MetricDescriptor, error)
-	DeleteMetricDescriptor(ctx context.Context, req *monitoringpb.DeleteMetricDescriptorRequest) error
-	CreateTimeSeries(context.Context, *monitoringpb.CreateTimeSeriesRequest) error
-	ListTimeSeries(context.Context, *monitoringpb.ListTimeSeriesRequest) ([]*monitoringpb.TimeSeries, error)
+	CreateMetricDescriptor(context.Context, *monitoringpb.CreateMetricDescriptorRequest, ...gax.CallOption) (*metricpb.MetricDescriptor, error)
+	GetMetricDescriptor(context.Context, *monitoringpb.GetMetricDescriptorRequest, ...gax.CallOption) (*metricpb.MetricDescriptor, error)
+	DeleteMetricDescriptor(context.Context, *monitoringpb.DeleteMetricDescriptorRequest, ...gax.CallOption) error
+	CreateTimeSeries(context.Context, *monitoringpb.CreateTimeSeriesRequest, ...gax.CallOption) error
+	ListTimeSeries(context.Context, *monitoringpb.ListTimeSeriesRequest, ...gax.CallOption) *monitoring.TimeSeriesIterator
 	Close() error
 }
 
@@ -48,14 +53,17 @@ type Adapter struct {
 
 // NewAdapter returns a new Stackdriver adapter.
 func NewAdapter(ctx context.Context, lookbackInterval time.Duration) (*Adapter, error) {
-	c, err := newClient(ctx)
+	opts := []option.ClientOption{
+		option.WithUserAgent(version.UserAgent()),
+	}
+	sd, err := monitoring.NewMetricClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf("StackDriver client/lookback configured: %v/%v", c, lookbackInterval)
+	log.Debugf("StackDriver client/lookback configured: %v/%v", sd, lookbackInterval)
 
-	return &Adapter{c, lookbackInterval}, nil
+	return &Adapter{sd, lookbackInterval}, nil
 }
 
 // Close closes the underlying metric client.
@@ -73,7 +81,8 @@ func (a *Adapter) listTimeSeries(ctx context.Context, project, name string) ([]*
 	if err != nil {
 		return nil, err
 	}
-	return a.c.ListTimeSeries(ctx, &monitoringpb.ListTimeSeriesRequest{
+
+	it := a.c.ListTimeSeries(ctx, &monitoringpb.ListTimeSeriesRequest{
 		Name:   fmt.Sprintf("projects/%s", project),
 		Filter: fmt.Sprintf(`metric.type = "%s"`, name),
 		Interval: &monitoringpb.TimeInterval{
@@ -81,6 +90,18 @@ func (a *Adapter) listTimeSeries(ctx context.Context, project, name string) ([]*
 			EndTime:   endTs,
 		},
 	})
+	var series []*monitoringpb.TimeSeries
+	for {
+		t, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		series = append(series, t)
+	}
+	return series, nil
 }
 
 // getDescriptor returns a metric descriptor for a given metric.

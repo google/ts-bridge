@@ -17,6 +17,7 @@ require (
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2 // indirect
+	github.com/googleapis/gax-go/v2 v2.0.5
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/influxdata/influxql v1.1.0
 	github.com/sirupsen/logrus v1.6.0
