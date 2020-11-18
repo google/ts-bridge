@@ -15,7 +15,7 @@ const (
 	Project = "ts-bridge"
 
 	// Ver is the current version of this project.
-	Ver = "0.1.0"
+	Ver = "0.1.1"
 )
 
 // googAPIREgex matches the useragent string from the google API libraries.

@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -165,6 +166,7 @@ func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.C
 	for {
 		select {
 		case <-time.After(config.Options.SyncPeriod):
+			log.Debugf("Goroutines: %v", runtime.NumGoroutine())
 			ctx, cancel := context.WithTimeout(ctx, config.Options.UpdateTimeout)
 			log.WithContext(ctx).Debugf("Running sync...")
 			if err := tasks.Sync(ctx, config); err != nil {
