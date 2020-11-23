@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/ts-bridge/env"
 
+	pmexporter "contrib.go.opencensus.io/exporter/prometheus"
 	sdexporter "contrib.go.opencensus.io/exporter/stackdriver"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/stats"
@@ -45,9 +46,15 @@ type statsExporter interface {
 	Flush()
 }
 
+// prometheusExporter is implemented by Prometheus exporter.
+type prometheusExporter interface {
+	view.Exporter
+}
+
 // StatsCollector has all metrics, tags, and the exporter used to publish them.
 type StatsCollector struct {
 	Exporter            statsExporter
+	PromExporter        prometheusExporter
 	MetricImportLatency *stats.Int64Measure
 	TotalImportLatency  *stats.Int64Measure
 	OldestMetricAge     *stats.Int64Measure
@@ -72,6 +79,7 @@ func NewCollector(ctx context.Context, project string) (*StatsCollector, error) 
 
 	}
 
+	// Stackdriver exporter.
 	c.Exporter, err = sdexporter.NewExporter(sdexporter.Options{
 		ProjectID: project,
 		OnError:   c.logError,
@@ -80,7 +88,17 @@ func NewCollector(ctx context.Context, project string) (*StatsCollector, error) 
 	if err != nil {
 		return nil, err
 	}
-	if err = c.registerAndCreateMetrics(); err != nil {
+
+	// Prometheus exporter.
+	c.PromExporter, err = pmexporter.NewExporter(pmexporter.Options{
+		Namespace: project,
+		OnError:   c.logError,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.registerAndCreateMetrics(); err != nil {
 		// Clean up after registerAndCreateMetrics. Don't delete this!
 		c.Close()
 		return nil, err
@@ -88,7 +106,7 @@ func NewCollector(ctx context.Context, project string) (*StatsCollector, error) 
 	return c, nil
 }
 
-// logError is configured as the error handler for Stackdriver exporter.
+// logError is configured as the error handler for Opencensus exporter(s).
 func (c *StatsCollector) logError(err error) {
 	log.WithContext(c.ctx).Errorf("StatsCollector: %v", err)
 }
@@ -98,6 +116,7 @@ func (c *StatsCollector) logError(err error) {
 func (c *StatsCollector) Close() {
 	view.Unregister(c.views...)
 	view.UnregisterExporter(c.Exporter)
+	//view.UnregisterExporter(c.PromExporter)
 	c.Exporter.Flush()
 	statsMu.Unlock()
 }
@@ -107,6 +126,7 @@ func (c *StatsCollector) registerAndCreateMetrics() error {
 	statsMu.Lock()
 	var err error
 	view.RegisterExporter(c.Exporter)
+	view.RegisterExporter(c.PromExporter)
 
 	// Reporting period is set very high here to effectively disable regular flushing of metrics by OpenCensus
 	// view worker. Since stats collector is relatively short-lived, we rely on metric flushing that happens when
