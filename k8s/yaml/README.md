@@ -23,7 +23,7 @@ For convenience, `ts-bridge` provides 2 example deployments:
 1) Create a service account for ts-bridge:
 
     ```
-    gcloud iam service-accounts create ts-bridge-sa \
+    $ gcloud iam service-accounts create ts-bridge-sa \
         --description="TSBridge service account"
     
     ```
@@ -31,7 +31,7 @@ For convenience, `ts-bridge` provides 2 example deployments:
 1) Assign it the `Monitoring.Editor` role:
 
     ```
-    λ gcloud projects add-iam-policy-binding PROJECT \
+    $ gcloud projects add-iam-policy-binding PROJECT \
         --member="serviceAccount:ts-bridge-sa@PROJECT.iam.gserviceaccount.com" \
         --role="roles/monitoring.editor"
     ```
@@ -40,7 +40,7 @@ For convenience, `ts-bridge` provides 2 example deployments:
 1)  Allow GKE service account to impersonate this service account:
 
     ```
-    gcloud iam service-accounts add-iam-policy-binding \
+    $ gcloud iam service-accounts add-iam-policy-binding \
      --role roles/iam.workloadIdentityUser \
      --member "serviceAccount:PROJECT.svc.id.goog[ts-bridge/GKE_SERVICE_ACCOUNT_NAME]" \
      ts-bridge-sa@PROJECT.iam.gserviceaccount.com
@@ -51,7 +51,7 @@ For convenience, `ts-bridge` provides 2 example deployments:
 1) Annotate the GKE Service Account:
 
     ```
-    kubectl annotate serviceaccount \
+    $ kubectl annotate serviceaccount \
       --namespace ts-bridge \
       GKE_SERVICE_ACCOUNT_NAME \
       iam.gke.io/gcp-service-account=ts-bridge-sa@PROJECT.iam.gserviceaccount.com
@@ -60,7 +60,7 @@ For convenience, `ts-bridge` provides 2 example deployments:
 1) You can test whether it worked via running a `gcloud` test pod and issuing `gcloud auth list`, e.g.:
 
 ```
-    kubectl run -it \
+    $ kubectl run -it \
     --image google/cloud-sdk:slim \
     --serviceaccount default \
     --namespace ts-bridge \
