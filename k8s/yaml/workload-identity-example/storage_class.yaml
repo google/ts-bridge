@@ -1,0 +1,9 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ssd-backed
+  namespace: ts-bridge
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd

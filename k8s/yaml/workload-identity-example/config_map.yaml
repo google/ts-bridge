@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ts-bridge-config
+  namespace: ts-bridge
+data:
+  metrics.yaml: |
+    datadog_metrics:
+      - name: http_availability
+        query: "sum:http_requests{status:200} / sum:http_requests{*}"
+        api_key: xxx
+        application_key: xxx
+        destination: stackdriver
+      - name: total_bytes_sent
+        query: "system.net.bytes_sent {*}"
+        api_key: xxx
+        application_key: xxx
+        destination: another_stackdriver
+    influxdb_metrics:
+      - name: request_count
+        query: "SELECT CUMULATIVE_SUM(COUNT(requests)) FROM nginx_access_log GROUP BY time(1m)"
+        database: telegraf
+        endpoint: http://localhost:8086
+        time_aggregated: true
+        cumulative: true
+    stackdriver_destinations:
+      - name: stackdriver
+      - name: another_stackdriver
+        project_id: "another-projectname"
