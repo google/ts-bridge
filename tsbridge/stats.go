@@ -53,7 +53,9 @@ type prometheusExporter interface {
 
 // StatsCollector has all metrics, tags, and the exporter used to publish them.
 type StatsCollector struct {
-	SDExporter   statsExporter
+	// SDExporter is the Stackdriver Exporter.
+	SDExporter statsExporter
+	// PromExporter is the Prometheus Exporter.
 	PromExporter prometheusExporter
 
 	MetricImportLatency *stats.Int64Measure
@@ -120,28 +122,28 @@ func (c *StatsCollector) logError(err error) {
 	log.WithContext(c.ctx).Errorf("StatsCollector: %v", err)
 }
 
-// Close unregisters all metrics and Stackdriver exporter and flushes accumulated
-// metric points to Stackdriver.
+// Close unregisters all metrics and Opencensus exporter(s) and flushes
+// accumulated metric points to Stackdriver.
 func (c *StatsCollector) Close() {
 	view.Unregister(c.views...)
 	if c.SDExporter != nil {
 		view.UnregisterExporter(c.SDExporter)
+		c.SDExporter.Flush()
 	}
 	if c.PromExporter != nil {
 		view.UnregisterExporter(c.PromExporter)
 	}
-	c.SDExporter.Flush()
 	statsMu.Unlock()
 }
 
-// registerAndCreateMetrics registers Stackdriver exporter and metric views.
+// registerAndCreateMetrics registers Opencensus exporter(s) and metric views.
 func (c *StatsCollector) registerAndCreateMetrics() error {
 	statsMu.Lock()
 	var err error
 
 	// Reporting period is set very high here to effectively disable regular flushing of metrics by OpenCensus
 	// view worker. Since stats collector is relatively short-lived, we rely on metric flushing that happens when
-	// the Stackdriver exporter is closed by the Close function above (at the end of each sync operation).
+	// the exporter is closed by the Close function above (at the end of each sync operation).
 	view.SetReportingPeriod(time.Hour)
 
 	c.MetricKey, err = tag.NewKey("metric_name")
