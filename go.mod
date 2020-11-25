@@ -7,10 +7,7 @@ require (
 	cloud.google.com/go/datastore v1.3.0
 	contrib.go.opencensus.io/exporter/prometheus v0.2.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.4
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/aws/aws-sdk-go v1.35.28 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
@@ -20,7 +17,7 @@ require (
 	github.com/google/go-cmp v0.5.3 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/influxdata/influxql v1.1.0
-	github.com/prometheus/client_golang v1.8.0
+	github.com/prometheus/client_golang v1.8.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/timshannon/bolthold v0.0.0-20200817130212-4a25ab140645
