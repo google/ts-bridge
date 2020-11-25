@@ -92,6 +92,9 @@ var (
 	boltdbPath = kingpin.Flag("boltdb-path", "path to BoltDB store, e.g. /data/bolt.db").Envar("BOLTDB_PATH").String()
 
 	ver = kingpin.Flag("version", "print the current version revision").Bool()
+
+	monitoringBackends = kingpin.Flag(
+		"metric-exporters", "Monitoring backend(s) for internal metrics.").Enums("prometheus", "stackdriver")
 )
 
 func main() {
@@ -127,6 +130,7 @@ func main() {
 		UpdateParallelism:        *updateParallelism,
 		UpdateTimeout:            *updateTimeout,
 		EnableStatusPage:         *enableStatusPage,
+		MonitoringBackends:       *monitoringBackends,
 		StorageEngine:            *storageEngine,
 		SyncPeriod:               *syncPeriod,
 	})

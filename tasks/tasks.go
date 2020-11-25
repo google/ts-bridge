@@ -65,7 +65,7 @@ func Sync(ctx context.Context, config *tsbridge.Config) error {
 	})
 
 	statsCollectorOnce.Do(func() {
-		statsCollector, err = tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject)
+		statsCollector, err = tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject, config.Options.MonitoringBackends)
 		if err != nil {
 			errSync = append(errSync, fmt.Errorf("unable to initialize stats collector: %v", err))
 		}
