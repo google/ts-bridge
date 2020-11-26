@@ -19,7 +19,9 @@ package tsbridge
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -49,6 +51,7 @@ type statsExporter interface {
 // prometheusExporter is implemented by Prometheus exporter.
 type prometheusExporter interface {
 	view.Exporter
+	http.Handler
 }
 
 // StatsCollector has all metrics, tags, and the exporter used to publish them.
@@ -97,16 +100,20 @@ func NewCollector(ctx context.Context, project string, backends []string) (*Stat
 
 		case "prometheus":
 			c.PromExporter, err = pmexporter.NewExporter(pmexporter.Options{
-				Namespace: project,
+				// Namespace regexs much match ^[a-zA-Z_:][a-zA-Z0-9_:]*$
+				Namespace: strings.ReplaceAll(project, "-", "_"),
 				OnError:   c.logError,
 			})
 			if err != nil {
 				return nil, err
 			}
+			view.RegisterExporter(c.PromExporter)
+			http.HandleFunc("/metrics", c.PromExporter.ServeHTTP)
+
 		default:
 			return nil, fmt.Errorf("Unknown monitoring backend %v", b)
 		}
-		view.RegisterExporter(c.PromExporter)
+
 	}
 
 	if err := c.registerAndCreateMetrics(); err != nil {

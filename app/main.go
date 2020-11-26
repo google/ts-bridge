@@ -94,7 +94,8 @@ var (
 	ver = kingpin.Flag("version", "print the current version revision").Bool()
 
 	monitoringBackends = kingpin.Flag(
-		"metric-exporters", "Monitoring backend(s) for internal metrics.").Enums("prometheus", "stackdriver")
+		"stats-metric-exporters", "Monitoring backend(s) for internal metrics.",
+	).Envar("STATS_METRIC_EXPORTERS").Default("stackdriver").Enums("prometheus", "stackdriver")
 )
 
 func main() {
