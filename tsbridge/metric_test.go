@@ -54,7 +54,8 @@ func (e *fakeExporter) ExportView(d *view.Data) {
 func (e *fakeExporter) Flush() {}
 func fakeStats(t *testing.T) (*StatsCollector, *fakeExporter) {
 	e := &fakeExporter{values: make(map[string]view.AggregationData)}
-	c := &StatsCollector{Exporter: e}
+	c := &StatsCollector{SDExporter: e}
+	view.RegisterExporter(c.SDExporter)
 	if err := c.registerAndCreateMetrics(); err != nil {
 		t.Fatalf("Cannot initialize collector: %v", err)
 	}
@@ -93,7 +94,7 @@ var metricUpdateTests = []struct {
 		sd.EXPECT().LatestTimestamp(gomock.Any(), "sd-project", "sd-metricname").Return(latest, nil)
 
 		descr := &metricpb.MetricDescriptor{Description: "foobar"}
-		ts := []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{ValueType: metricpb.MetricDescriptor_DOUBLE}}
+		ts := []*monitoringpb.TimeSeries{{ValueType: metricpb.MetricDescriptor_DOUBLE}}
 		src.EXPECT().StackdriverData(gomock.Any(), latest, gomock.Any()).Return(descr, ts, nil)
 		sd.EXPECT().CreateTimeseries(gomock.Any(), "sd-project", "sd-metricname", descr, ts).Return(
 			fmt.Errorf("some-error"))
@@ -104,7 +105,7 @@ var metricUpdateTests = []struct {
 		sd.EXPECT().LatestTimestamp(gomock.Any(), "sd-project", "sd-metricname").Return(latest, nil)
 
 		descr := &metricpb.MetricDescriptor{Description: "foobar"}
-		ts := []*monitoringpb.TimeSeries{&monitoringpb.TimeSeries{ValueType: metricpb.MetricDescriptor_DOUBLE}}
+		ts := []*monitoringpb.TimeSeries{{ValueType: metricpb.MetricDescriptor_DOUBLE}}
 		src.EXPECT().StackdriverData(gomock.Any(), latest, gomock.Any()).Return(descr, ts, nil)
 		sd.EXPECT().CreateTimeseries(gomock.Any(), "sd-project", "sd-metricname", descr, ts).Return(nil)
 	}, "1 new points found"},
@@ -278,7 +279,7 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 	src.EXPECT().StackdriverName().MaxTimes(100).Return("sd-name")
 	config := &MetricConfig{
 		metrics: []*Metric{
-			&Metric{
+			{
 				// Having an emoji symbol in metric name should produce an error while defining an OpenCensus tag.
 				Name:   "invalid metric name 🥒",
 				Record: &datastore.StoredMetricRecord{LastUpdate: time.Now().Add(-time.Hour), Storage: storage},

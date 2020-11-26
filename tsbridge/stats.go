@@ -19,12 +19,15 @@ package tsbridge
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/ts-bridge/env"
 
+	pmexporter "contrib.go.opencensus.io/exporter/prometheus"
 	sdexporter "contrib.go.opencensus.io/exporter/stackdriver"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/stats"
@@ -45,9 +48,19 @@ type statsExporter interface {
 	Flush()
 }
 
+// prometheusExporter is implemented by Prometheus exporter.
+type prometheusExporter interface {
+	view.Exporter
+	http.Handler
+}
+
 // StatsCollector has all metrics, tags, and the exporter used to publish them.
 type StatsCollector struct {
-	Exporter            statsExporter
+	// SDExporter is the Stackdriver Exporter.
+	SDExporter statsExporter
+	// PromExporter is the Prometheus Exporter.
+	PromExporter prometheusExporter
+
 	MetricImportLatency *stats.Int64Measure
 	TotalImportLatency  *stats.Int64Measure
 	OldestMetricAge     *stats.Int64Measure
@@ -58,7 +71,7 @@ type StatsCollector struct {
 
 // NewCollector creates a new StatsCollector.
 // Users need to call StatsCollector.Close() when it's no longer needed. Only a single collector can be active per process.
-func NewCollector(ctx context.Context, project string) (*StatsCollector, error) {
+func NewCollector(ctx context.Context, project string, backends []string) (*StatsCollector, error) {
 	var err error
 	c := &StatsCollector{ctx: ctx}
 
@@ -72,15 +85,38 @@ func NewCollector(ctx context.Context, project string) (*StatsCollector, error) 
 
 	}
 
-	c.Exporter, err = sdexporter.NewExporter(sdexporter.Options{
-		ProjectID: project,
-		OnError:   c.logError,
-		Context:   ctx,
-	})
-	if err != nil {
-		return nil, err
+	for _, b := range backends {
+		switch b {
+		case "stackdriver":
+			c.SDExporter, err = sdexporter.NewExporter(sdexporter.Options{
+				ProjectID: project,
+				OnError:   c.logError,
+				Context:   ctx,
+			})
+			if err != nil {
+				return nil, err
+			}
+			view.RegisterExporter(c.SDExporter)
+
+		case "prometheus":
+			c.PromExporter, err = pmexporter.NewExporter(pmexporter.Options{
+				// Namespace regexs much match ^[a-zA-Z_:][a-zA-Z0-9_:]*$
+				Namespace: strings.ReplaceAll(project, "-", "_"),
+				OnError:   c.logError,
+			})
+			if err != nil {
+				return nil, err
+			}
+			view.RegisterExporter(c.PromExporter)
+			http.HandleFunc("/metrics", c.PromExporter.ServeHTTP)
+
+		default:
+			return nil, fmt.Errorf("Unknown monitoring backend %v", b)
+		}
+
 	}
-	if err = c.registerAndCreateMetrics(); err != nil {
+
+	if err := c.registerAndCreateMetrics(); err != nil {
 		// Clean up after registerAndCreateMetrics. Don't delete this!
 		c.Close()
 		return nil, err
@@ -88,29 +124,33 @@ func NewCollector(ctx context.Context, project string) (*StatsCollector, error) 
 	return c, nil
 }
 
-// logError is configured as the error handler for Stackdriver exporter.
+// logError is configured as the error handler for Opencensus exporter(s).
 func (c *StatsCollector) logError(err error) {
 	log.WithContext(c.ctx).Errorf("StatsCollector: %v", err)
 }
 
-// Close unregisters all metrics and Stackdriver exporter and flushes accumulated
-// metric points to Stackdriver.
+// Close unregisters all metrics and Opencensus exporter(s) and flushes
+// accumulated metric points to Stackdriver.
 func (c *StatsCollector) Close() {
 	view.Unregister(c.views...)
-	view.UnregisterExporter(c.Exporter)
-	c.Exporter.Flush()
+	if c.SDExporter != nil {
+		view.UnregisterExporter(c.SDExporter)
+		c.SDExporter.Flush()
+	}
+	if c.PromExporter != nil {
+		view.UnregisterExporter(c.PromExporter)
+	}
 	statsMu.Unlock()
 }
 
-// registerAndCreateMetrics registers Stackdriver exporter and metric views.
+// registerAndCreateMetrics registers Opencensus exporter(s) and metric views.
 func (c *StatsCollector) registerAndCreateMetrics() error {
 	statsMu.Lock()
 	var err error
-	view.RegisterExporter(c.Exporter)
 
 	// Reporting period is set very high here to effectively disable regular flushing of metrics by OpenCensus
 	// view worker. Since stats collector is relatively short-lived, we rely on metric flushing that happens when
-	// the Stackdriver exporter is closed by the Close function above (at the end of each sync operation).
+	// the exporter is closed by the Close function above (at the end of each sync operation).
 	view.SetReportingPeriod(time.Hour)
 
 	c.MetricKey, err = tag.NewKey("metric_name")
@@ -122,20 +162,20 @@ func (c *StatsCollector) registerAndCreateMetrics() error {
 	c.TotalImportLatency = stats.Int64("ts_bridge/import_latencies", "total time it took to import all metrics", stats.UnitMilliseconds)
 	c.OldestMetricAge = stats.Int64("ts_bridge/oldest_metric_age", "oldest time since last successful import across all metrics", stats.UnitMilliseconds)
 	c.views = []*view.View{
-		&view.View{
+		{
 			Name:        c.MetricImportLatency.Name(),
 			Description: c.MetricImportLatency.Description(),
 			Measure:     c.MetricImportLatency,
 			Aggregation: latencyDistribution,
 			TagKeys:     []tag.Key{c.MetricKey},
 		},
-		&view.View{
+		{
 			Name:        c.TotalImportLatency.Name(),
 			Description: c.TotalImportLatency.Description(),
 			Measure:     c.TotalImportLatency,
 			Aggregation: latencyDistribution,
 		},
-		&view.View{
+		{
 			Name:        c.OldestMetricAge.Name(),
 			Description: c.OldestMetricAge.Description(),
 			Measure:     c.OldestMetricAge,
