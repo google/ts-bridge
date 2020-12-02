@@ -130,7 +130,7 @@ For more information, see:
 1. Build the image from the supplied `Dockerfile`:
 
 ```
-docker build -t tsbridge:VERSION -t some-other-tag .
+docker build -t ts-bridge:VERSION -t some-other-tag .
 ```
 
 ### Running the image
@@ -139,7 +139,7 @@ The image sets `ts-bridge` binary as the entrypoint, so it can simply be run via
 in working directory (`/ts-bridge`), e.g.:
 
 ```
-docker run -p 8080:8080 \                                                                                                                                                                                               (2)
+docker run -p 8080:8080 \
  -v ${PWD}/metrics.yaml:/ts-bridge/metrics.yaml \
  -v ~/.gcp/my-account-key.json:/ts-bridge/gcp_account_key.json \
  -e "GOOGLE_APPLICATION_CREDENTIALS=/ts-bridge/gcp_account_key.json" \
