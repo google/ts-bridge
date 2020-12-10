@@ -1,55 +1,32 @@
 steps:
 
-# This step builds the container image.
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Build image'
-  args:
-  - 'build'
-  - '-t'
-  - 'gcr.io/$PROJECT_ID/ts-bridge:$SHORT_SHA'
-  - '-t'
-  - 'gcr.io/$PROJECT_ID/ts-bridge:$BUILD_ID'
-  - '.'
-
 # Get the release tags from git
 - name: gcr.io/cloud-builders/git
-  args: [fetch, --depth=100]
+  args: [fetch, --depth=100, --tags]
 
 - name: 'gcr.io/cloud-builders/git'
   id: 'Setup tags'
   entrypoint: '/bin/bash'
-  args: ['-c', 'git tag; git describe --abbrev=0 --tags > _FULL_TAG; echo $(cat _FULL_TAG)']
+  args: ['-c', 'git describe --abbrev=0 --tags > _FULL_TAG; echo $(cat _FULL_TAG)']
 
-# Tag image with custom tags
 - name: 'gcr.io/cloud-builders/docker'
-  id: 'Tagging image with timestamp'
+  id: 'Build image with custom tags'
   entrypoint: '/bin/bash'
-  args: ['-c', 'docker tag gcr.io/$PROJECT_ID/ts-bridge:$SHORT_SHA gcr.io/$PROJECT_ID/ts-bridge:$(date -u +%Y%m%dT%H%M)']
-
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Tagging image with full version'
-  entrypoint: '/bin/bash'
-  args: ['-c', 'docker tag gcr.io/$PROJECT_ID/ts-bridge:$SHORT_SHA gcr.io/$PROJECT_ID/ts-bridge:$(cat _FULL_TAG)']
-
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Push image with all tags'
   args:
-  - 'push'
-  - 'gcr.io/$PROJECT_ID/ts-bridge'
+  - '-ceux'
+  - |
+    docker build -t gcr.io/$PROJECT_ID/ts-bridge:$SHORT_SHA \
+      -t gcr.io/$PROJECT_ID/ts-bridge:$BUILD_ID \
+      -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _FULL_TAG) \
+      -t gcr.io/$PROJECT_ID/ts-bridge:$$(date -u +%Y%m%dT%H%M) \
+      .
+
+# - name: 'gcr.io/cloud-builders/docker'
+#   id: 'Push image with all tags'
+#   args:
+#   - 'push'
+#   - 'gcr.io/$PROJECT_ID/ts-bridge'
 
 # TODO: Add major and minor tags
-# - name: 'gcr.io/cloud-builders/docker'
-#   id: 'Tagging image with major version'
-#   entrypoint: '/bin/bash'
-#   args: ['-c', "docker tag gcr.io/$PROJECT_ID/ts-bridge:$SHORT_SHA gcr.io/$PROJECT_ID/ts-bridge:$(cat _MAJOR_TAG)"]
-
-# - name: 'gcr.io/cloud-builders/docker'
-#   id: 'Tagging image with minor version'
-#   entrypoint: '/bin/bash'
-#   args: ['-c', "docker tag gcr.io/$PROJECT_ID/ts-bridge:$SHORT_SHA gcr.io/$PROJECT_ID/ts-bridge:$(cat _MINOR_TAG)"]
-
-# images:
-# - gcr.io/$PROJECT_ID/ts-bridge:$SHORT_SHA
-# - gcr.io/$PROJECT_ID/ts-bridge:$BUILD_ID
-# - gcr.io/$PROJECT_ID/ts-bridge:$(date -u +%Y%m%dT%H%M) 
-# - gcr.io/$PROJECT_ID/ts-bridge:$(cat _FULL_TAG)
+images:
+- gcr.io/$PROJECT_ID/ts-bridge
