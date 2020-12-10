@@ -11,7 +11,7 @@ steps:
 
 - name: 'python:3'
   id: 'Create version tags'
-  args: ['python3', 'create-version-tags.py']
+  args: ['python3', 'ci/create-version-tags.py']
 
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build image with custom tags'
