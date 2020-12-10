@@ -5,12 +5,12 @@ steps:
   args: [fetch, --depth=100, --tags]
 
 - name: 'gcr.io/cloud-builders/git'
-  id: 'Setup tags'
+  id: 'Get version from git tags'
   entrypoint: '/bin/bash'
   args: ['-c', 'git describe --abbrev=0 --tags > _FULL_TAG']
 
-- name: 'python'
-  id: 'Generate tags'
+- name: 'python:3'
+  id: 'Create version tags'
   args: ['python3', 'create-version-tags.py']
 
 - name: 'gcr.io/cloud-builders/docker'

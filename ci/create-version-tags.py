@@ -1,3 +1,5 @@
+import sys
+
 # Used by cloudbuild.yaml to tag images with correct versions based on git version tags.
 # This script assumes that there exists a file named _FULL_TAG in the container workspace
 # already, which contains the latest version number from git.
@@ -6,7 +8,7 @@ try:
         version = f.read()
 except FileNotFoundError:
     print("Please run git describe --abbrev=0 --tags > _FULL_TAG first.")
-    quit()
+    sys.exit()
 
 # Remove the 'v' at the start of version tags because we want numerics only
 full_version = version.lstrip('v')
