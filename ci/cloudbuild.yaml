@@ -1,6 +1,6 @@
 steps:
 
-- name: gcr.io/cloud-builders/git
+- name: 'gcr.io/cloud-builders/git'
   id: 'Fetch tags from git'
   args: [fetch, --depth=100, --tags]
 
@@ -14,6 +14,10 @@ steps:
   args: ['python3', 'ci/create-version-tags.py']
 
 - name: 'gcr.io/cloud-builders/docker'
+  entrypoint: '/bin/bash'
+  args: ['-c', 'docker pull gcr.io/$PROJECT_ID/ts-bridge:latest || exit 0']
+
+- name: 'gcr.io/cloud-builders/docker'
   id: 'Build image with custom tags'
   entrypoint: '/bin/bash'
   args:
@@ -25,8 +29,11 @@ steps:
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _FULL_TAG) \
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MAJOR_TAG) \
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MINOR_TAG) \
-      .
+      -t gcr.io/$PROJECT_ID/ts-bridge:latest \
+      --cache-from gcr.io/$PROJECT_ID/ts-bridge:latest .
 
+options:
+  machineType: 'N1_HIGHCPU_8'
 # Push images to container registry
 images:
 - gcr.io/$PROJECT_ID/ts-bridge
