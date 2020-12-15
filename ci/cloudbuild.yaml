@@ -2,7 +2,7 @@ steps:
 
 - name: 'gcr.io/cloud-builders/git'
   id: 'Fetch tags from git'
-  args: [fetch, --depth=100, --tags]
+  args: [fetch, --unshallow]
 
 - name: 'gcr.io/cloud-builders/git'
   id: 'Get version from git tags'
