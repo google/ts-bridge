@@ -1,0 +1,7 @@
+[
+  {
+    "Target": "gcr.io/cre-tools/ts-bridge (alpine 3.12.2)",
+    "Type": "alpine",
+    "Vulnerabilities": null
+  }
+]
