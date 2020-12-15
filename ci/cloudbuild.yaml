@@ -27,6 +27,17 @@ steps:
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MINOR_TAG) \
       .
 
+- name: 'docker.io/aquasec/trivy:latest'
+  id: 'Scan newly built image using Trivy'
+  args: 
+  - 'image'
+  - '--output=trivy.out'
+  - '--no-progress'
+  - 'gcr.io/cre-tools/ts-bridge'
+
+- name: 'ubuntu'
+  args: ['cat', 'trivy.out']
+ 
 # Push images to container registry
 images:
 - gcr.io/$PROJECT_ID/ts-bridge
