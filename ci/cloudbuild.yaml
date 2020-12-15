@@ -31,11 +31,14 @@ steps:
   id: 'Scan newly built image using Trivy'
   args: 
   - 'image'
-  - '--output=trivy.out'
+  - '--format=template'
+  - '--template=@contrib/junit.tpl'
+  - '--output=trivy-out.xml'
   - '--no-progress'
   - 'gcr.io/cre-tools/ts-bridge'
 
 - name: 'ubuntu'
+  id: 'Debug'
   args: ['cat', 'trivy.out']
  
 # Push images to container registry
