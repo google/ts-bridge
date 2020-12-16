@@ -28,7 +28,7 @@ steps:
       .
 
 - name: 'docker.io/aquasec/trivy:latest'
-  id: 'Scan newly built image using Trivy'
+  id: 'Scan newly built image using Trivy and create trivy-out.json'
   args: 
   - 'image'
   - '--format=json'
@@ -36,9 +36,17 @@ steps:
   - '--no-progress'
   - 'gcr.io/cre-tools/ts-bridge'
 
-- name: 'ubuntu'
-  id: 'Debug'
-  args: ['cat', 'trivy-out.json']
+- name: 'docker.io/aquasec/trivy:latest'
+  id: 'Scan newly built image using Trivy and create trivy-out.table'
+  args: 
+  - 'image'
+  - '--output=trivy-out.table'
+  - '--no-progress'
+  - 'gcr.io/cre-tools/ts-bridge'
+
+- name: 'python:3'
+  id: 'Parse results and check for vulnerabilities'
+  args: ['python3', 'ci/parse-trivy-results.py trivy-out $$SHORT_SHA $$BUILD_ID $$(cat _FULL_TAG) $$REPO_NAME']
  
 # Push images to container registry
 images:

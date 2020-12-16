@@ -37,7 +37,8 @@ def load_results():
                 "trivy image --format json --light --no-progress -o {} "
                 "gcr.io/cre-tools/ts-bridge \n"
                 "trivy image --light  --no-progress -o {} "
-                "gcr.io/cre-tools/ts-bridge \n").format(TRIVY_OUT_JSON, TRIVY_OUT_TABLE)
+                "gcr.io/cre-tools/ts-bridge \n"
+                ).format(TRIVY_OUT_JSON, TRIVY_OUT_TABLE)
         sys.exit(error)
     return [trivy_result, trivy_table]
 
@@ -59,9 +60,11 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
     COMMIT_ID = sys.argv[2]
     BUILD_ID = sys.argv[3]
     FULL_TAG = sys.argv[4]
-    repo = get_github_repo()
+    # TODO: uncomment when bot token is added
+    # repo = get_github_repo()
 
-    title = "Vulnerability [{}] found in {}: Images from commit {} cannot be released".format(",".join(severity_list), FULL_TAG, COMMIT_ID)
+    title = ("Vulnerability [{}] found in {}: Images from commit {} cannot be "
+             "released").format(",".join(severity_list), FULL_TAG, COMMIT_ID)
 
     intro = ("Trivy has detected {} vulnerabilities in your latest "
              "build. Please correct this issue so the new images can be "
@@ -76,8 +79,12 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
     body.append("```")
     body = "\n".join(body)
 
-    new_issue = repo.create_issue(title=title, body=body)
-    return new_issue.number
+    # TODO: uncomment when bot token is added
+    # new_issue = repo.create_issue(title=title, body=body)
+    # return new_issue.number
+    print("Posted:")
+    print(title, body)
+    return -1
 
 def check_cmdline_args():
     if len(sys.argv) != CMDLINE_ARGS:
@@ -96,15 +103,18 @@ def main():
     if vulnerabilities:
         num_vulnerabilities = len(vulnerabilities)
         severity_list = get_severity_list(vulnerabilities)
-        issue_number = create_issue(target, num_vulnerabilities, severity_list, trivy_table)
+        issue_number = create_issue(target, num_vulnerabilities, 
+                                    severity_list, trivy_table)
         
         debug_msg = ("{} vulnerabilities of type: [{}] were found in image. "
                      "Please refer to issue: {} for details."
-                    ).format(num_vulnerabilities, ",".join(severity_list), issue_number)
+                    ).format(num_vulnerabilities, ",".join(severity_list), 
+                             issue_number)
         print(debug_msg)
 
         if "HIGH" in severity_list or "CRITICAL" in severity_list:
-            sys.exit("Build will be aborted and new images will not be pushed to GCR.")
+            sys.exit("Build will be aborted and "
+                     "new images will not be pushed to GCR.")
         else:
             print("Images will be published to GCR.")
     else:
