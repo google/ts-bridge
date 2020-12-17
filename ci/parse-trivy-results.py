@@ -10,71 +10,107 @@ this script. These can be generated with:
         gcr.io/cre-tools/ts-bridge
     trivy image --light  --no-progress -o <trivy_output>.table
         gcr.io/cre-tools/ts-bridge
-
-Usage:
-    python3 parse-trivy-results.py <trivy_output> <commit_id> <build_id> <release_tag> <repo_name> <token_file>
-
-Example usage:
-    python3 parse-trivy-results.py trivy-out 99637b2 c933bec7-9acd-48e2-bd7f-7ed7251b5792 1.1.1 google/ts-bridge git_token.txt
-
 """
 import json
 import sys
+from absl import app
+from absl import flags
 from github import Github
+from pathlib import Path
 
-CMDLINE_ARGS = 7
+FLAGS = flags.FLAGS
+flags.DEFINE_string(
+    "build_id", None,
+    "ID of the current Cloud Build, specified using $BUILD_ID substitution")
+flags.DEFINE_string(
+    "commit_id", None,
+    "ID of the current commit, specified using $COMMIT_ID substitution")
+flags.DEFINE_string(
+    "release_tag", None, "Number of the latest release/tag. "
+    "This can be retrieved using \n "
+    "git describe --abbrev=0 --tags > _release_tag")
+flags.DEFINE_string(
+    "repo_name", None,
+    "Name of the github repo where potential issues will be created.")
+flags.DEFINE_string(
+    "token_file", None,
+    "Name of the file where the GitHub token has been stored.\n"
+    "This can be created using \n"
+    "gcloud secrets versions access latest "
+    "--secret=Ts-bridge-bot-token --format='get(payload.data)' | "
+    "tr '_-' '/+' | base64 -d > git_token.txt")
+flags.DEFINE_string("trivy_file", None,
+                    "Name of the files where results from Trivy are stored")
+
+flags.mark_flag_as_required("build_id")
+flags.mark_flag_as_required("commit_id")
+flags.mark_flag_as_required("release_tag")
+flags.mark_flag_as_required("repo_name")
+flags.mark_flag_as_required("token_file")
+flags.mark_flag_as_required("trivy_file")
+
+
+def validate_flags():
+    error = None
+    if not Path("{}.json".format(FLAGS.trivy_file)).is_file():
+        error = ("Please run \n"
+                 "trivy image --format json --light --no-progress -o {}.json "
+                 "gcr.io/cre-tools/ts-bridge \n").format(FLAGS.trivy_file)
+    elif not Path("{}.table".format(FLAGS.trivy_file)).is_file():
+        error = ("Please run \n"
+                 "trivy image --format --light --no-progress -o {}.table "
+                 "gcr.io/cre-tools/ts-bridge \n").format(FLAGS.trivy_file)
+    elif not Path(FLAGS.token_file).is_file():
+        error = ("Please run \n"
+                 "gcloud secrets versions access latest "
+                 "--secret=Ts-bridge-bot-token --format='get(payload.data)' | "
+                 "tr '_-' '/+' | base64 -d > {}").format(FLAGS.token_file)
+    if error:
+        sys.exit(error)
+
 
 def load_results():
     """ Load the results from Trivy."""
-    trivy_out_json = "{}.json".format(sys.argv[1])
-    trivy_out_table = "{}.table".format(sys.argv[1])
+    trivy_out_json = "{}.json".format(FLAGS.trivy_file)
+    trivy_out_table = "{}.table".format(FLAGS.trivy_file)
     print(trivy_out_table, trivy_out_json)
-    try:
-        with open(trivy_out_json) as f:
-            # Index is 0 because there is only one target built.
-            trivy_result = json.load(f)[0]
-        with open(trivy_out_table) as f:
-            trivy_table = f.read()
-    except FileNotFoundError:
-        error = ("Please run \n"
-                "trivy image --format json --light --no-progress -o {} "
-                "gcr.io/cre-tools/ts-bridge \n"
-                "trivy image --light  --no-progress -o {} "
-                "gcr.io/cre-tools/ts-bridge \n"
-                ).format(trivy_out_json, trivy_out_table)
-        sys.exit(error)
+    with open(trivy_out_json) as f:
+        # Index is 0 because there is only one target built.
+        trivy_result = json.load(f)[0]
+    with open(trivy_out_table) as f:
+        trivy_table = f.read()
     return [trivy_result, trivy_table]
+
 
 def get_severity_list(vulnerabilities):
     """Filters out all the severities in a given list of vulnerabilities."""
-    severity_list = [v.get('Severity') for v in vulnerabilities]
+    severity_list = [v.get("Severity") for v in vulnerabilities]
     return sorted(set(severity_list))
+
 
 def get_github_repo():
     """Connects to GitHub API and returns a repo object."""
-    repo_name = sys.argv[5]
-    with open(sys.argv[6]) as f:
+    with open(FLAGS.token_file) as f:
         token = f.read()
     github = Github(token)
-    return github.get_repo(repo_name)
+    return github.get_repo(FLAGS.repo_name)
+
 
 def create_issue(target_name, num_vulnerabilities, severity_list, table):
     """Creates a Github issue with vulnerabilities as description."""
-    commit_id = sys.argv[2]
-    build_id = sys.argv[3]
-    release_tag = sys.argv[4]
     repo = get_github_repo()
 
     title = ("Vulnerability [{}] found in {}: Images from commit {} cannot be "
-             "released").format(",".join(severity_list), release_tag, commit_id)
+             "released").format(",".join(severity_list), FLAGS.release_tag,
+                                FLAGS.commit_id)
 
     intro = ("Trivy has detected {} vulnerabilities in your latest "
              "build. Please correct this issue so the new images can be "
              "published on Container Registry.\n").format(num_vulnerabilities)
     body = [intro]
-    body.append("**Cloud Build ID:** {}".format(build_id))
-    body.append("**Commit ID:** {}".format(commit_id))
-    body.append("**Tag:** {}".format(release_tag))
+    body.append("**Cloud Build ID:** {}".format(FLAGS.build_id))
+    body.append("**Commit ID:** {}".format(FLAGS.commit_id))
+    body.append("**Tag:** {}".format(FLAGS.release_tag))
     body.append("**Target:** {}".format(target_name))
     body.append("```")
     body.append(table)
@@ -84,17 +120,9 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
     new_issue = repo.create_issue(title=title, body=body)
     return new_issue.number
 
-def check_cmdline_args():
-    if len(sys.argv) != CMDLINE_ARGS:
-        print(len(sys.argv))
-        debug_msg = ("Usage: python3 parse-trivy-results.py <TRIVY_FILE> "
-                     "<commit_id> <build_id> <release_tag> <repo_name> "
-                     "<TOKEN_FILE>")
-        sys.exit(debug_msg)
 
-def main():
-    check_cmdline_args()
-
+def main(argv):
+    validate_flags()
     [trivy_result, trivy_table] = load_results()
 
     # Examine results to check if vulnerabilities were found
@@ -103,13 +131,12 @@ def main():
     if vulnerabilities:
         num_vulnerabilities = len(vulnerabilities)
         severity_list = get_severity_list(vulnerabilities)
-        issue_number = create_issue(target, num_vulnerabilities,
-                                    severity_list, trivy_table)
+        issue_number = create_issue(target, num_vulnerabilities, severity_list,
+                                    trivy_table)
 
         debug_msg = ("{} vulnerabilities of type: [{}] were found in image. "
-                     "Please refer to issue: {} for details."
-                    ).format(num_vulnerabilities, ",".join(severity_list),
-                             issue_number)
+                     "Please refer to issue: {} for details.").format(
+                         num_vulnerabilities, ",".join(severity_list), issue_number)
         print(debug_msg)
 
         if "HIGH" in severity_list or "CRITICAL" in severity_list:
@@ -120,5 +147,6 @@ def main():
     else:
         print("No vulnerabilities found. Images will be published to GCR.")
 
-if __name__ == '__main__':
-    main()
+
+if __name__ == "__main__":
+    app.run(main)
