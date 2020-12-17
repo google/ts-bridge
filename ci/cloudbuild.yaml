@@ -1,5 +1,8 @@
 steps:
 
+# This step will fetch the entire git history so tags can be accessed during
+# the build. If this negatively impacts build performance, please modify it so
+# only commits up to the latest tag is fetched.
 - name: 'gcr.io/cloud-builders/git'
   id: 'Fetch tags from git'
   args: [fetch, --unshallow]
@@ -13,6 +16,10 @@ steps:
   id: 'Create version tags'
   args: ['python3', 'ci/create-version-tags.py']
 
+# TODO(https://github.com/google/ts-bridge/issues/67): This step will mask all 
+# errors from docker pull, not just when image doesn't exist. Consider using
+# a more optimal approach which can parse the output from docker pull to handle
+# errors better.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: '/bin/bash'
   args: ['-c', 'docker pull gcr.io/$PROJECT_ID/ts-bridge:latest || exit 0']
