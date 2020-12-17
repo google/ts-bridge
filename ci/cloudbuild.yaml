@@ -56,9 +56,9 @@ steps:
   - '-c'
   - |
     pip install PyGithub
-    python3 ci/parse-trivy-results.py trivy-out $SHORT_SHA $build_id $$(cat _release_tag) $_repo_name git_token.txt
+    python3 ci/parse-trivy-results.py trivy-out $SHORT_SHA $build_id $$(cat _release_tag) $_REPO_NAME git_token.txt
 substitutions:
-  _repo_name: SoapHia/ts-bridge
+  _REPO_NAME: SoapHia/ts-bridge
 # Push images to container registry
 images:
 - gcr.io/$PROJECT_ID/ts-bridge
