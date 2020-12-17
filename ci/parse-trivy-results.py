@@ -83,9 +83,10 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
 
 def check_cmdline_args():
     if len(sys.argv) != CMDLINE_ARGS:
+        print(len(sys.argv))
         debug_msg = ("Usage: python3 parse-trivy-results.py <TRIVY_FILE> "
-                     "<COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME>"
-                     "<ACCESS_TOKEN>")
+                     "<COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME> "
+                     "<TOKEN_FILE>")
         sys.exit(debug_msg)
 
 def main():

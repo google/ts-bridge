@@ -44,14 +44,19 @@ steps:
   - '--no-progress'
   - 'gcr.io/cre-tools/ts-bridge'
 
-steps:
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=Ts-bridge-bot-token --format='get(payload.data)' | tr '_-' '/+' | base64 -d > git_token.txt" ]
 
 - name: 'python:3'
   id: 'Parse results and check for vulnerabilities'
-  args: ['python3', 'ci/parse-trivy-results.py', 'trivy-out', '$$SHORT_SHA', '$$BUILD_ID', '$$(cat _FULL_TAG)', '$$REPO_NAME', 'git_token.txt']
+  entrypoint: 'bash'
+  # TODO: change repo name to Google/
+  args: 
+  - '-c'
+  - | 
+    pip install PyGithub
+    python3 ci/parse-trivy-results.py trivy-out $SHORT_SHA $BUILD_ID $$(cat _FULL_TAG) SoapHia/$REPO_NAME git_token.txt
  
 # Push images to container registry
 images:
