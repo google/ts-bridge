@@ -7,7 +7,7 @@ steps:
 - name: 'gcr.io/cloud-builders/git'
   id: 'Get version from git tags'
   entrypoint: '/bin/bash'
-  args: ['-c', 'git describe --abbrev=0 --tags > _FULL_TAG']
+  args: ['-c', 'git describe --abbrev=0 --tags > _release_tag']
 
 - name: 'python:3'
   id: 'Create version tags'
@@ -20,29 +20,29 @@ steps:
   - '-c'
   - |
     docker build -t gcr.io/$PROJECT_ID/ts-bridge:git-$SHORT_SHA \
-      -t gcr.io/$PROJECT_ID/ts-bridge:build-$BUILD_ID \
+      -t gcr.io/$PROJECT_ID/ts-bridge:build-$build_id \
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(date -u +%Y%m%dT%H%M) \
-      -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _FULL_TAG) \
+      -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _release_tag) \
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MAJOR_TAG) \
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MINOR_TAG) \
       .
 
 - name: 'docker.io/aquasec/trivy:latest'
   id: 'Scan newly built image using Trivy and create trivy-out.json'
-  args: 
+  args:
   - 'image'
   - '--format=json'
   - '--output=trivy-out.json'
   - '--no-progress'
-  - 'gcr.io/cre-tools/ts-bridge'
+  - 'gcr.io/cre-tools/ts-bridge:git-$SHORT_SHA'
 
 - name: 'docker.io/aquasec/trivy:latest'
   id: 'Scan newly built image using Trivy and create trivy-out.table'
-  args: 
+  args:
   - 'image'
   - '--output=trivy-out.table'
   - '--no-progress'
-  - 'gcr.io/cre-tools/ts-bridge'
+  - 'gcr.io/cre-tools/ts-bridge:git-$SHORT_SHA'
 
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
@@ -52,13 +52,13 @@ steps:
   id: 'Parse results and check for vulnerabilities'
   entrypoint: 'bash'
   # TODO: change repo name to Google/
-  args: 
+  args:
   - '-c'
-  - | 
+  - |
     pip install PyGithub
-    python3 ci/parse-trivy-results.py trivy-out $SHORT_SHA $BUILD_ID $$(cat _FULL_TAG) $_REPO_NAME git_token.txt
+    python3 ci/parse-trivy-results.py trivy-out $SHORT_SHA $build_id $$(cat _release_tag) $_repo_name git_token.txt
 substitutions:
-  _REPO_NAME: SoapHia/ts-bridge
+  _repo_name: SoapHia/ts-bridge
 # Push images to container registry
 images:
 - gcr.io/$PROJECT_ID/ts-bridge

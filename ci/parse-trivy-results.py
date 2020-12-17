@@ -4,15 +4,18 @@
 2) Creates a GitHub issue in the given repo if any vulnerabilities were found.
 3) Fails the CI build if any vulerabilities of HIGH/CRITICAL severity exist.
 
-Both the json and table Trivy results must be created prior to running 
+Both the json and table Trivy results must be created prior to running
 this script. These can be generated with:
-    trivy image --format json --light --no-progress -o <OUTPUT_NAME> 
+    trivy image --format json --light --no-progress -o <trivy_output>.json
         gcr.io/cre-tools/ts-bridge
-    trivy image --light  --no-progress -o <OUTPUT_NAME>
+    trivy image --light  --no-progress -o <trivy_output>.table
         gcr.io/cre-tools/ts-bridge
 
 Usage:
-    python3 parse-trivy-results.py <TRIVY_FILE> <COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME> <TOKEN_FILE>
+    python3 parse-trivy-results.py <trivy_output> <commit_id> <build_id> <release_tag> <repo_name> <token_file>
+
+Example usage:
+    python3 parse-trivy-results.py trivy-out 99637b2 c933bec7-9acd-48e2-bd7f-7ed7251b5792 1.1.1 google/ts-bridge git_token.txt
 
 """
 import json
@@ -23,14 +26,14 @@ CMDLINE_ARGS = 7
 
 def load_results():
     """ Load the results from Trivy."""
-    TRIVY_OUT_JSON = "{}.json".format(sys.argv[1])
-    TRIVY_OUT_TABLE = "{}.table".format(sys.argv[1])
-    print(TRIVY_OUT_TABLE, TRIVY_OUT_JSON)
+    trivy_out_json = "{}.json".format(sys.argv[1])
+    trivy_out_table = "{}.table".format(sys.argv[1])
+    print(trivy_out_table, trivy_out_json)
     try:
-        with open(TRIVY_OUT_JSON) as f:
+        with open(trivy_out_json) as f:
             # Index is 0 because there is only one target built.
             trivy_result = json.load(f)[0]
-        with open(TRIVY_OUT_TABLE) as f:
+        with open(trivy_out_table) as f:
             trivy_table = f.read()
     except FileNotFoundError:
         error = ("Please run \n"
@@ -38,7 +41,7 @@ def load_results():
                 "gcr.io/cre-tools/ts-bridge \n"
                 "trivy image --light  --no-progress -o {} "
                 "gcr.io/cre-tools/ts-bridge \n"
-                ).format(TRIVY_OUT_JSON, TRIVY_OUT_TABLE)
+                ).format(trivy_out_json, trivy_out_table)
         sys.exit(error)
     return [trivy_result, trivy_table]
 
@@ -49,29 +52,29 @@ def get_severity_list(vulnerabilities):
 
 def get_github_repo():
     """Connects to GitHub API and returns a repo object."""
-    REPO_NAME = sys.argv[5]
+    repo_name = sys.argv[5]
     with open(sys.argv[6]) as f:
         token = f.read()
     github = Github(token)
-    return github.get_repo(REPO_NAME)
+    return github.get_repo(repo_name)
 
 def create_issue(target_name, num_vulnerabilities, severity_list, table):
     """Creates a Github issue with vulnerabilities as description."""
-    COMMIT_ID = sys.argv[2]
-    BUILD_ID = sys.argv[3]
-    FULL_TAG = sys.argv[4]
+    commit_id = sys.argv[2]
+    build_id = sys.argv[3]
+    release_tag = sys.argv[4]
     repo = get_github_repo()
 
     title = ("Vulnerability [{}] found in {}: Images from commit {} cannot be "
-             "released").format(",".join(severity_list), FULL_TAG, COMMIT_ID)
+             "released").format(",".join(severity_list), release_tag, commit_id)
 
     intro = ("Trivy has detected {} vulnerabilities in your latest "
              "build. Please correct this issue so the new images can be "
              "published on Container Registry.\n").format(num_vulnerabilities)
     body = [intro]
-    body.append("**Cloud Build ID:** {}".format(BUILD_ID))
-    body.append("**Commit ID:** {}".format(COMMIT_ID))
-    body.append("**Tag:** {}".format(FULL_TAG))
+    body.append("**Cloud Build ID:** {}".format(build_id))
+    body.append("**Commit ID:** {}".format(commit_id))
+    body.append("**Tag:** {}".format(release_tag))
     body.append("**Target:** {}".format(target_name))
     body.append("```")
     body.append(table)
@@ -85,7 +88,7 @@ def check_cmdline_args():
     if len(sys.argv) != CMDLINE_ARGS:
         print(len(sys.argv))
         debug_msg = ("Usage: python3 parse-trivy-results.py <TRIVY_FILE> "
-                     "<COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME> "
+                     "<commit_id> <build_id> <release_tag> <repo_name> "
                      "<TOKEN_FILE>")
         sys.exit(debug_msg)
 
@@ -100,12 +103,12 @@ def main():
     if vulnerabilities:
         num_vulnerabilities = len(vulnerabilities)
         severity_list = get_severity_list(vulnerabilities)
-        issue_number = create_issue(target, num_vulnerabilities, 
+        issue_number = create_issue(target, num_vulnerabilities,
                                     severity_list, trivy_table)
-        
+
         debug_msg = ("{} vulnerabilities of type: [{}] were found in image. "
                      "Please refer to issue: {} for details."
-                    ).format(num_vulnerabilities, ",".join(severity_list), 
+                    ).format(num_vulnerabilities, ",".join(severity_list),
                              issue_number)
         print(debug_msg)
 
