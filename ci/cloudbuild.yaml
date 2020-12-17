@@ -1,8 +1,11 @@
 steps:
 
-- name: gcr.io/cloud-builders/git
+# This step will fetch the entire git history so tags can be accessed during
+# the build. If this negatively impacts build performance, please modify it so
+# only commits up to the latest tag are fetched.
+- name: 'gcr.io/cloud-builders/git'
   id: 'Fetch tags from git'
-  args: [fetch, --depth=100, --tags]
+  args: [fetch, --unshallow]
 
 - name: 'gcr.io/cloud-builders/git'
   id: 'Get version from git tags'
@@ -12,6 +15,14 @@ steps:
 - name: 'python:3'
   id: 'Create version tags'
   args: ['python3', 'ci/create-version-tags.py']
+
+# TODO(https://github.com/google/ts-bridge/issues/67): This step will mask all 
+# errors from docker pull, not just when image doesn't exist. Consider using
+# a more optimal approach which can parse the output from docker pull to handle
+# errors better.
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: '/bin/bash'
+  args: ['-c', 'docker pull gcr.io/$PROJECT_ID/ts-bridge:latest || exit 0']
 
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build image with custom tags'
@@ -25,8 +36,11 @@ steps:
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _FULL_TAG) \
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MAJOR_TAG) \
       -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MINOR_TAG) \
-      .
+      -t gcr.io/$PROJECT_ID/ts-bridge:latest \
+      --cache-from gcr.io/$PROJECT_ID/ts-bridge:latest .
 
+options:
+  machineType: 'N1_HIGHCPU_8'
 # Push images to container registry
 images:
 - gcr.io/$PROJECT_ID/ts-bridge
