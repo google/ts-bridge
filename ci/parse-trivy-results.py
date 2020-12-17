@@ -12,14 +12,14 @@ this script. These can be generated with:
         gcr.io/cre-tools/ts-bridge
 
 Usage:
-    python3 parse-trivy-results.py <TRIVY_FILE> <COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME>
+    python3 parse-trivy-results.py <TRIVY_FILE> <COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME> <TOKEN_FILE>
 
 """
 import json
 import sys
 from github import Github
 
-CMDLINE_ARGS = 6
+CMDLINE_ARGS = 7
 
 def load_results():
     """ Load the results from Trivy."""
@@ -50,9 +50,9 @@ def get_severity_list(vulnerabilities):
 def get_github_repo():
     """Connects to GitHub API and returns a repo object."""
     REPO_NAME = sys.argv[5]
-    # TODO: make a bot and put token here
-    ACCESS_TOKEN = "XXXXXX"
-    github = Github(ACCESS_TOKEN)
+    with open(sys.argv[6]) as f:
+        token = f.read()
+    github = Github(token)
     return github.get_repo(REPO_NAME)
 
 def create_issue(target_name, num_vulnerabilities, severity_list, table):
@@ -60,8 +60,7 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
     COMMIT_ID = sys.argv[2]
     BUILD_ID = sys.argv[3]
     FULL_TAG = sys.argv[4]
-    # TODO: uncomment when bot token is added
-    # repo = get_github_repo()
+    repo = get_github_repo()
 
     title = ("Vulnerability [{}] found in {}: Images from commit {} cannot be "
              "released").format(",".join(severity_list), FULL_TAG, COMMIT_ID)
@@ -79,17 +78,14 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
     body.append("```")
     body = "\n".join(body)
 
-    # TODO: uncomment when bot token is added
-    # new_issue = repo.create_issue(title=title, body=body)
-    # return new_issue.number
-    print("Posted:")
-    print(title, body)
-    return -1
+    new_issue = repo.create_issue(title=title, body=body)
+    return new_issue.number
 
 def check_cmdline_args():
     if len(sys.argv) != CMDLINE_ARGS:
         debug_msg = ("Usage: python3 parse-trivy-results.py <TRIVY_FILE> "
-                     "<COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME>")
+                     "<COMMIT_ID> <BUILD_ID> <FULL_TAG> <REPO_NAME>"
+                     "<ACCESS_TOKEN>")
         sys.exit(debug_msg)
 
 def main():
