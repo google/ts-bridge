@@ -58,8 +58,7 @@ steps:
 
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
-  args:
-  - '-c', 'gcloud secrets versions access latest --secret=Ts-bridge-bot-token --format='get(payload.data)' | tr '_-' '/+' | base64 -d > git_token.txt' ]
+  args: [ '-c', "gcloud secrets versions access latest --secret=Ts-bridge-bot-token --format='get(payload.data)' | tr '_-' '/+' | base64 -d > git_token.txt" ]
 
 - name: 'python:3'
   id: 'Parse results and check for vulnerabilities'
