@@ -90,6 +90,10 @@ def get_severity_list(vulnerabilities):
     return sorted(set(severity_list))
 
 
+def high_or_critical_exists(severity_list):
+    return "HIGH" in severity_list or "CRITICAL" in severity_list
+
+
 def get_github_repo():
     """Connects to GitHub API and returns a repo object."""
     with open(FLAGS.token_file) as f:
@@ -102,15 +106,21 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
     """Creates a Github issue with vulnerabilities as description."""
     repo = get_github_repo()
 
-    title = ("Vulnerability [{}] found in {}: Images from commit {} cannot be "
-             "released").format(",".join(severity_list), FLAGS.release_tag,
-                                FLAGS.commit_id)
+    title = ("Vulnerability [{}] found in release {}").format(
+        ",".join(severity_list), FLAGS.release_tag)
 
-    intro = ("Trivy has detected {} vulnerabilities in your latest "
-             "build. Please correct this issue so the new images can be "
-             "published on Container Registry.\n").format(num_vulnerabilities)
-    body = [intro]
-    body.append("**Cloud Build ID:** {}".format(FLAGS.build_id))
+    body_intro = ("Trivy has detected {} vulnerabilities in your latest "
+                  "build.").format(num_vulnerabilities)
+
+    if high_or_critical_exists(severity_list):
+        title += ": Images from commit {} cannot be released".format(
+            FLAGS.commit_id)
+
+        body_intro += " Please correct this issue so the new images can be "
+        "published on Container Registry."
+
+    body = [body_intro]
+    body.append("\n**Cloud Build ID:** {}".format(FLAGS.build_id))
     body.append("**Commit ID:** {}".format(FLAGS.commit_id))
     body.append("**Tag:** {}".format(FLAGS.release_tag))
     body.append("**Target:** {}".format(target_name))
@@ -138,11 +148,10 @@ def main(argv):
 
         details = ("{} vulnerabilities of type: [{}] were found in image. "
                    "Please refer to issue: {} for details.").format(
-            num_vulnerabilities, ",".join(severity_list),
-            issue_number)
+                       num_vulnerabilities, ",".join(severity_list), issue_number)
         print(details)
 
-        if "HIGH" in severity_list or "CRITICAL" in severity_list:
+        if high_or_critical_exists(severity_list):
             sys.exit("Build will be aborted and "
                      "new images will not be pushed to GCR.")
         else:
