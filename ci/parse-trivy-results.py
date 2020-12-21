@@ -73,11 +73,13 @@ def load_results():
     """ Load the results from Trivy."""
     trivy_out_json = "{}.json".format(FLAGS.trivy_file)
     trivy_out_table = "{}.table".format(FLAGS.trivy_file)
-    print(trivy_out_table, trivy_out_json)
     with open(trivy_out_json) as f:
+        # trivy_result is the json result used for parsing vulnerabilities
         # Index is 0 because there is only one target built.
         trivy_result = json.load(f)[0]
     with open(trivy_out_table) as f:
+        # trivy_table is the results in a more readable table format which can
+        # be included in GitHub issues.
         trivy_table = f.read()
     return [trivy_result, trivy_table]
 
@@ -134,10 +136,11 @@ def main(argv):
         issue_number = create_issue(target, num_vulnerabilities, severity_list,
                                     trivy_table)
 
-        debug_msg = ("{} vulnerabilities of type: [{}] were found in image. "
-                     "Please refer to issue: {} for details.").format(
-                         num_vulnerabilities, ",".join(severity_list), issue_number)
-        print(debug_msg)
+        details = ("{} vulnerabilities of type: [{}] were found in image. "
+                   "Please refer to issue: {} for details.").format(
+            num_vulnerabilities, ",".join(severity_list),
+            issue_number)
+        print(details)
 
         if "HIGH" in severity_list or "CRITICAL" in severity_list:
             sys.exit("Build will be aborted and "
