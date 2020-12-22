@@ -63,7 +63,6 @@ steps:
 - name: 'python:3'
   id: 'Parse results and check for vulnerabilities'
   entrypoint: 'bash'
-  # TODO: change repo name to Google/
   args:
   - '-c'
   - |
