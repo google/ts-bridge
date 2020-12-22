@@ -13,9 +13,12 @@ this script. These can be generated with:
 """
 import json
 import sys
+import textwrap
 from absl import app
 from absl import flags
+from github import BadAttributeException
 from github import Github
+from github import GithubException
 from pathlib import Path
 
 FLAGS = flags.FLAGS
@@ -99,7 +102,15 @@ def get_github_repo():
     with open(FLAGS.token_file) as f:
         token = f.read()
     github = Github(token)
-    return github.get_repo(FLAGS.repo_name)
+    try:
+        repo = github.get_repo(FLAGS.repo_name)
+    except (BadAttributeException, GithubException) as e:
+        sys.exit(
+            ("Failed to get repo with name {} due to an exception from GitHub."
+             "\nThe error returned by GitHub API was {}").format(
+                FLAGS.repo_name, e))
+
+    return repo
 
 
 def create_issue(target_name, num_vulnerabilities, severity_list, table):
@@ -109,27 +120,36 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
     title = ("Vulnerability [{}] found in release {}").format(
         ",".join(severity_list), FLAGS.release_tag)
 
-    body_intro = ("Trivy has detected {} vulnerabilities in your latest "
-                  "build.").format(num_vulnerabilities)
+    body = ("Trivy has detected {} vulnerabilities in your latest "
+            "build.").format(num_vulnerabilities)
 
     if high_or_critical_exists(severity_list):
         title += ": Images from commit {} cannot be released".format(
             FLAGS.commit_id)
 
-        body_intro += " Please correct this issue so the new images can be "
+        body += " Please correct this issue so the new images can be "
         "published on Container Registry."
 
-    body = [body_intro]
-    body.append("\n**Cloud Build ID:** {}".format(FLAGS.build_id))
-    body.append("**Commit ID:** {}".format(FLAGS.commit_id))
-    body.append("**Tag:** {}".format(FLAGS.release_tag))
-    body.append("**Target:** {}".format(target_name))
-    body.append("```")
-    body.append(table)
-    body.append("```")
-    body = "\n".join(body)
+    body_args = dict(build_id=FLAGS.build_id, commit_id=FLAGS.commit_id,
+                     release_tag=FLAGS.release_tag, target_name=target_name, table=table)
+    body += textwrap.dedent("""
+        \n
+        **Cloud Build ID:** {build_id}
+        **Commit ID:** {commit_id}
+        **Tag:** {release_tag}
+        **Target:** {target_name}
+        ```
+        {table}
+        ```""").format(**body_args)
+    print(body)
 
-    new_issue = repo.create_issue(title=title, body=body)
+    try:
+        new_issue = repo.create_issue(title=title, body=body)
+    except (BadAttributeException, GithubException) as e:
+        sys.exit(
+            ("Failed to create issue due to an exception from GitHub.\nThe "
+             "error returned by GitHub API was {}").format(e))
+
     return new_issue.number
 
 
