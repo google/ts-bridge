@@ -76,9 +76,8 @@ steps:
       --repo_name=$_REPO_NAME \
       --token_file=git_token.txt \
       --trivy_file=trivy-out
-# TODO: change repo name to Google/
 substitutions:
-  _REPO_NAME: SoapHia/ts-bridge
+  _REPO_NAME: Google/ts-bridge
 options:
   machineType: 'N1_HIGHCPU_8'
 # Push images to container registry
