@@ -77,7 +77,7 @@ steps:
       --token_file=git_token.txt \
       --trivy_file=trivy-out
 substitutions:
-  _REPO_NAME: Google/ts-bridge
+  _REPO_NAME: google/ts-bridge
 options:
   machineType: 'N1_HIGHCPU_8'
 # Push images to container registry
