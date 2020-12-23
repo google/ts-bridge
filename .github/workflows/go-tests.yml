@@ -24,6 +24,8 @@ jobs:
 
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
+        # TODO(https://github.com/google/ts-bridge/issues/70): Test with
+        # different versions of Go.
         with:
           go-version: '^1.*'
 
