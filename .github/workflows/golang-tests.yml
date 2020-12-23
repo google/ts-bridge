@@ -1,9 +1,18 @@
-name: go-test
+name: Run Golang Tests
 on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch.
   push:
-    # Run for all commits on test branch
     branches:
-      - travis-migration
+      - master
+  pull_request:
+    types: [opened, reopened, edited, synchronised]
+    branches:
+      - master
+  # Also trigger when a new release has been created.
+  release:
+    types:
+      - created
 jobs:
   install-and-run:
     name: Install go and run tests
