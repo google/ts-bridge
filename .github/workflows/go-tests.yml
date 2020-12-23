@@ -1,0 +1,57 @@
+name: Run Go Tests
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the master branch.
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, reopened, edited, synchronised]
+    branches:
+      - master
+  # Also trigger when a new release has been created.
+  release:
+    types: [created, edited, published]
+jobs:
+  install-and-run:
+    name: Install go and run tests
+    runs-on: ubuntu-latest
+    env:
+      CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        # TODO(https://github.com/google/ts-bridge/issues/70): Test with
+        # different versions of Go.
+        with:
+          go-version: '^1.*'
+
+      - name: Set up gcloud datastore emulator
+        # JRE is needed for the datastore emulator
+        run: |
+          curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-307.0.0-linux-x86_64.tar.gz | tar xfz - -C $HOME
+          $HOME/google-cloud-sdk/bin/gcloud components install beta cloud-datastore-emulator
+          sudo apt-get install openjdk-8-jre-headless
+
+      - name: Run tests
+        run: |
+          source $HOME/google-cloud-sdk/path.bash.inc
+          go mod download
+          go install github.com/go-bindata/go-bindata/v3/go-bindata
+          go install github.com/golang/mock/mockgen
+          go test -v -timeout=30s ./...
+          gofmt -w $(go list -f '{{.Dir}}' ./...)
+          go generate ./...
+
+      - name: Check that `gofmt` and `go generate` resulted in no diffs.
+        run: |
+          status=$(git status --porcelain)
+          if [[ -n ${status} ]]; then
+            echo "Regenerated files differ from checked-in versions: ${status}"
+            git status
+            git diff
+            exit 1
+          fi
