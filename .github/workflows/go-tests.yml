@@ -42,9 +42,21 @@ jobs:
           go mod download
           go install github.com/go-bindata/go-bindata/v3/go-bindata
           go install github.com/golang/mock/mockgen
-          go test -v -timeout=30s ./...
+          go test -v -timeout=30s -json ./... > test.json
           gofmt -w $(go list -f '{{.Dir}}' ./...)
           go generate ./...
+
+      - name: Annotate Tests
+        if: always()
+        uses: guyarb/golang-test-annotations@v0.2.0
+        with:
+          test-results: test.json
+
+      - name: Remove test output
+        # Remove the test output so it does not interfere with the following
+        # step.
+        if: always()
+        run: rm test.json
 
       - name: Check that `gofmt` and `go generate` resulted in no diffs.
         run: |
