@@ -6,7 +6,7 @@ use on Google Container Registry. ts-bridge images are built using
 through [cloudbuild.yaml](https://github.com/google/ts-bridge/blob/master/ci/cloudbuild.yaml).
 
 <!-- TODO: remove the first sentence below when GCP is made public. -->
-WIP: The images stored on GCR have not yet been made public. We are awaiting
+**WIP:** The images stored on GCR have not yet been made public. We are waiting
 for permissions internally. Once they have been made public, anyone can pull them from:
 
 `gcr.io/cre-tools/ts-bridge:{tag}`
@@ -21,9 +21,6 @@ The complete flowchart for CI is shown below:
 Cloud Build triggers are configured purely on Google Cloud Platform (GCP, not on
 GitHub), which this repo is connected to. The CloudBuild trigger events which will be used for this project are as follows:
 
-**Test triggers:** (to be removed)
-* A push to any branch in the forked repository
-<!-- TODO: check the triggers are correct, for prod/dev cloud builds. -->
 **Prod triggers:**
 * A trigger on every push to a released tag
 * A trigger on every push to a pull request
