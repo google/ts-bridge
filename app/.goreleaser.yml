@@ -1,0 +1,27 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+before:
+  hooks:
+    # - curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-307.0.0-linux-x86_64.tar.gz | tar xfz - -C $HOME
+    # - $HOME/google-cloud-sdk/bin/gcloud components install beta cloud-datastore-emulator
+    # - sudo apt-get install openjdk-8-jre-headless
+    # - source $HOME/google-cloud-sdk/path.bash.inc
+    # - go generate ./...
+    # - go mod download
+builds:
+  - skip: true
+source:
+  enabled: true
+release:
+  # If set to true, will not auto-publish the release.
+  # Default is false.
+  draft: true
+
+  # If set to auto, will mark the release as not ready for production
+  # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
+  # If set to true, will mark the release as not ready for production.
+  # Default is false.
+  prerelease: auto
+
+  # Name of the release.
+  name_template: "{{.Tag}}"
