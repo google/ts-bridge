@@ -28,7 +28,7 @@ GitHub), which this repo is connected to. The CloudBuild trigger events which wi
 * A scheduled trigger to run every period
 
 <!-- TODO: remove the line below when GCP is made public. -->
-Please note that Cloud Build triggers can only be accessed and modified by
+Please note that currently Cloud Build triggers can only be accessed and modified by
 maintainers from Google.
 
 ### cloudbuild.yaml
