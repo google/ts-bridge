@@ -12,6 +12,7 @@ on:
   # Also trigger when a new release has been created.
   release:
     types: [created, edited, published]
+
 jobs:
   install-and-run:
     name: Install go and run tests
@@ -22,12 +23,15 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v2
 
-      - name: Set up Go 1.x
+      - name: Set Go version
+        run: echo "go-version=$(cat .go-version)" >> $GITHUB_ENV
+
+      - name: Set up Go according to .go-version
         uses: actions/setup-go@v2
         # TODO(https://github.com/google/ts-bridge/issues/70): Test with
         # different versions of Go.
         with:
-          go-version: '^1.*'
+          go-version: ${{ env.go-version }}
 
       - name: Set up gcloud datastore emulator
         # JRE is needed for the datastore emulator
@@ -42,9 +46,21 @@ jobs:
           go mod download
           go install github.com/go-bindata/go-bindata/v3/go-bindata
           go install github.com/golang/mock/mockgen
-          go test -v -timeout=30s ./...
+          go test -v -timeout=30s -json ./... > test.json
           gofmt -w $(go list -f '{{.Dir}}' ./...)
           go generate ./...
+
+      - name: Annotate Tests
+        if: always()
+        uses: guyarb/golang-test-annotations@v0.2.0
+        with:
+          test-results: test.json
+
+      - name: Remove test output
+        # Remove the test output so it does not interfere with the following
+        # step.
+        if: always()
+        run: rm test.json
 
       - name: Check that `gofmt` and `go generate` resulted in no diffs.
         run: |
