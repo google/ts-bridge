@@ -1,15 +1,46 @@
-# This is an example goreleaser.yaml file with some sane defaults.
+# The following file is based on the generated file from goreleaser
 # Make sure to check the documentation at http://goreleaser.com
 before:
   hooks:
-    # - curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-307.0.0-linux-x86_64.tar.gz | tar xfz - -C $HOME
-    # - $HOME/google-cloud-sdk/bin/gcloud components install beta cloud-datastore-emulator
-    # - sudo apt-get install openjdk-8-jre-headless
-    # - source $HOME/google-cloud-sdk/path.bash.inc
-    # - go generate ./...
-    # - go mod download
+    - go generate ./...
+    - go mod download
 builds:
-  - skip: true
+  - dir: ./
+    main: ./main.go
+    # GOOS list to build for.
+    # For more info refer to: https://golang.org/doc/install/source#environment
+    goos:
+      - darwin
+      - linux
+      # - windows
+
+    goarch:
+      - amd64
+      - 386
+      - arm
+      - arm64
+
+    # windows only works for amd64
+    # darwin only supports amd64 and arm64
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: 386
+
+archives:
+  - replacements:
+      linux: Linux
+      # windows: Windows
+      386: 32-bit
+      darwin: macOS
+      amd64: x86_64
 source:
   enabled: true
 release:

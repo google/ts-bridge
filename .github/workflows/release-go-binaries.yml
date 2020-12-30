@@ -1,11 +1,11 @@
-name: Go Releaser
+name: Release Go Binaries
 
 on:
   push:
     tags: ['v*']
 
 jobs:
-  go-releaser:
+  release-go-binaries:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,12 +13,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go 1.x
+      - name: Set Go version
+        run: echo "go-version=$(cat .go-version)" >> $GITHUB_ENV
+
+      - name: Set up Go according to .go-version
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.*'
+          go-version: ${{ env.go-version }}
 
-      - name: Run GoReleaser
+      - name: Run GoReleaser according to .goreleaser.yml
         uses: goreleaser/goreleaser-action@v2
         with:
           workdir: app/
