@@ -2,7 +2,6 @@ name: Tag and Release Go Binaries
 
 on:
   push:
-    # paths: ["version/.ts-bridge-version"]
     branches: go-releaser
 
 jobs:
