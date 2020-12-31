@@ -2,7 +2,7 @@ name: Release Go Binaries
 
 on:
   push:
-    tags: ['v*']
+    paths: ["version/.ts-bridge-version"]
 
 jobs:
   release-go-binaries:
@@ -12,6 +12,12 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - name: Tag version
+        uses: mathieudutour/github-tag-action@v5.1
+        with:
+          custom_tag: $(cat version/.ts-bridge-version)
+          github_token: ${{ secrets.TS_BRIDGE_BOT_TAG_TOKEN }}
 
       - name: Set Go version
         run: echo "go-version=$(cat .go-version)" >> $GITHUB_ENV
@@ -28,4 +34,4 @@ jobs:
           version: latest
           args: release --rm-dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TS_BRIDGE_BOT_TAG_TOKEN }}
