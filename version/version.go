@@ -13,10 +13,6 @@ import (
 const (
 	// Project is the name of this project.
 	Project = "ts-bridge"
-
-	// TODO(https://github.com/google/ts-bridge/issues/76): use .ts-bridge-version
-	// Ver is the current version of this project.
-	Ver = "0.2.0"
 )
 
 // googAPIREgex matches the useragent string from the google API libraries.

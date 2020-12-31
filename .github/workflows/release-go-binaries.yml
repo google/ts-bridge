@@ -14,7 +14,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up ts-bridge version
-        run: echo "ts-bridge-version=$(cat version/.ts-bridge-version)" >> $GITHUB_ENV
+        run: echo "ts-bridge-version=$(grep -oP 'Ver = \"\K[^\"]+' version/ts-bridge-version.go)" >> $GITHUB_ENV
 
       - name: Create Release Tag with current commit
         uses: actions/create-release@v1
