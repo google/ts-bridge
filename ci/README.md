@@ -23,8 +23,6 @@ GitHub), which this repo is connected to. The CloudBuild trigger events which wi
 
 **Prod triggers:**
 * A trigger on every push to a released tag
-* A trigger on every push to a pull request
-* A manual trigger for re-building
 * A scheduled trigger to run every period
 
 <!-- TODO: remove the line below when GCP is made public. -->
