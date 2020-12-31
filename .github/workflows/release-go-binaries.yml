@@ -1,11 +1,12 @@
-name: Release Go Binaries
+name: Tag and Release Go Binaries
 
 on:
   push:
-    paths: ["version/.ts-bridge-version"]
+    # paths: ["version/.ts-bridge-version"]
+    branches: go-releaser
 
 jobs:
-  release-go-binaries:
+  tag-current-commit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,13 +14,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Tag version
-        uses: mathieudutour/github-tag-action@v5.1
-        with:
-          custom_tag: $(cat version/.ts-bridge-version)
-          github_token: ${{ secrets.TS_BRIDGE_BOT_TAG_TOKEN }}
+      - name: Set up ts-bridge version
+        run: echo "ts-bridge-version=$(cat version/.ts-bridge-version)" >> $GITHUB_ENV
 
-      - name: Set Go version
+      - name: Create Release Tag with current commit
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.ts-bridge-version }}
+          release_name: ${{ env.ts-bridge-version }}
+          draft: false
+          prerelease: false
+
+  release-go-binaries:
+    needs: tag-current-commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set versions
         run: echo "go-version=$(cat .go-version)" >> $GITHUB_ENV
 
       - name: Set up Go according to .go-version
@@ -34,4 +51,4 @@ jobs:
           version: latest
           args: release --rm-dist
         env:
-          GITHUB_TOKEN: ${{ secrets.TS_BRIDGE_BOT_TAG_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
