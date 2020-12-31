@@ -1,0 +1,58 @@
+# The following file is based on the generated file from goreleaser
+# Make sure to check the documentation at http://goreleaser.com
+before:
+  hooks:
+    - go generate ./...
+    - go mod download
+builds:
+  - dir: ./
+    main: ./main.go
+    # GOOS list to build for.
+    # For more info refer to: https://golang.org/doc/install/source#environment
+    goos:
+      - darwin
+      - linux
+      # - windows
+
+    goarch:
+      - amd64
+      - 386
+      - arm
+      - arm64
+
+    # windows only works for amd64
+    # darwin only supports amd64 and arm64
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: 386
+
+archives:
+  - replacements:
+      linux: Linux
+      # windows: Windows
+      386: 32-bit
+      darwin: macOS
+      amd64: x86_64
+source:
+  enabled: true
+release:
+  # If set to true, will not auto-publish the release.
+  # Default is false.
+  draft: true
+
+  # If set to auto, will mark the release as not ready for production
+  # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
+  # If set to true, will mark the release as not ready for production.
+  # Default is false.
+  prerelease: auto
+
+  # Name of the release.
+  name_template: "{{.Tag}}"
