@@ -113,7 +113,7 @@ def get_github_repo():
     return repo
 
 
-def create_issue(target_name, num_vulnerabilities, severity_list, table):
+def create_issue(num_vulnerabilities, severity_list, table, json_output):
     """Creates a Github issue with vulnerabilities as description."""
     repo = get_github_repo()
 
@@ -131,7 +131,8 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
         "published on Container Registry."
 
     body_args = dict(build_id=FLAGS.build_id, commit_id=FLAGS.commit_id,
-                     release_tag=FLAGS.release_tag, target_name=target_name, table=table)
+                     release_tag=FLAGS.release_tag, target_name=json_output["Target"],
+                     table=table, json_output=json_output)
     body += textwrap.dedent("""
         \n
         **Cloud Build ID:** {build_id}
@@ -140,8 +141,15 @@ def create_issue(target_name, num_vulnerabilities, severity_list, table):
         **Target:** {target_name}
         ```
         {table}
-        ```""").format(**body_args)
-    print(body)
+        ```
+
+        <details>
+          <summary>JSON output from Trivy</summary>
+
+            ```json
+            {json_output}
+            ```
+        </details>""").format(**body_args)
 
     try:
         new_issue = repo.create_issue(title=title, body=body)
@@ -158,13 +166,12 @@ def main(argv):
     [trivy_result, trivy_table] = load_results()
 
     # Examine results to check if vulnerabilities were found
-    target = trivy_result["Target"]
     vulnerabilities = trivy_result["Vulnerabilities"]
     if vulnerabilities:
         num_vulnerabilities = len(vulnerabilities)
         severity_list = get_severity_list(vulnerabilities)
-        issue_number = create_issue(target, num_vulnerabilities, severity_list,
-                                    trivy_table)
+        issue_number = create_issue(trivy_result, num_vulnerabilities,
+                                    severity_list, trivy_table)
 
         details = ("{} vulnerabilities of type: [{}] were found in image. "
                    "Please refer to issue: {} for details.").format(
