@@ -8,6 +8,7 @@ on:
       - master
 jobs:
   test-docker-image-build:
+    name: Build Image and Run Trivy Scan
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
@@ -29,4 +30,3 @@ jobs:
           format: 'table'
           ignore-unfixed: true
           exit-code: '1' # Exit with 1 if vulnerabilities listed below are found.
-          severity: 'CRITICAL,HIGH'
