@@ -12,6 +12,7 @@ this script. These can be generated with:
         gcr.io/cre-tools/ts-bridge
 """
 import json
+import re
 import sys
 import textwrap
 from absl import app
@@ -61,7 +62,7 @@ def validate_flags():
                  "gcr.io/cre-tools/ts-bridge \n").format(FLAGS.trivy_file)
     elif not Path("{}.table".format(FLAGS.trivy_file)).is_file():
         error = ("Please run \n"
-                 "trivy image --format --light --no-progress -o {}.table "
+                 "trivy image --light --no-progress -o {}.table "
                  "gcr.io/cre-tools/ts-bridge \n").format(FLAGS.trivy_file)
     elif not Path(FLAGS.token_file).is_file():
         error = ("Please run \n"
@@ -73,7 +74,7 @@ def validate_flags():
 
 
 def load_results():
-    """ Load the results from Trivy."""
+    """Load the results from Trivy."""
     trivy_out_json = "{}.json".format(FLAGS.trivy_file)
     trivy_out_table = "{}.table".format(FLAGS.trivy_file)
     with open(trivy_out_json) as f:
@@ -113,12 +114,9 @@ def get_github_repo():
     return repo
 
 
-def create_issue(num_vulnerabilities, severity_list, table, json_output):
-    """Creates a Github issue with vulnerabilities as description."""
-    repo = get_github_repo()
-
-    title = ("Vulnerability [{}] found in release {}").format(
-        ",".join(severity_list), FLAGS.release_tag)
+def build_issue(num_vulnerabilities, severity_list, table, json_output):
+    """Creates the title and body of the GitHub issue"""
+    title = ("Vulnerability found in release {}").format(FLAGS.release_tag)
 
     body = ("Trivy has detected {} vulnerabilities in your latest "
             "build.").format(num_vulnerabilities)
@@ -132,12 +130,12 @@ def create_issue(num_vulnerabilities, severity_list, table, json_output):
 
     body_args = dict(build_id=FLAGS.build_id, commit_id=FLAGS.commit_id,
                      release_tag=FLAGS.release_tag, target_name=json_output["Target"],
-                     table=table, json_output=json_output)
+                     table=table, json_output=json.dumps(json_output, sort_keys=True, indent=4))
     body += textwrap.dedent("""
         \n
         **Cloud Build ID:** {build_id}
         **Commit ID:** {commit_id}
-        **Tag:** {release_tag}
+        **Release Tag:** {release_tag}
         **Target:** {target_name}
         ```
         {table}
@@ -146,35 +144,68 @@ def create_issue(num_vulnerabilities, severity_list, table, json_output):
         <details>
           <summary>JSON output from Trivy</summary>
 
-            ```json
-            {json_output}
-            ```
+        ```json
+        {json_output}
+        ```
         </details>""").format(**body_args)
 
+    return (title, body)
+
+
+def create_or_update_issue(repo, existing_issue, title, body):
+    """Creates or updates a Github issue for the current release."""
+
     try:
-        new_issue = repo.create_issue(title=title, body=body)
+        if existing_issue:
+            existing_issue.edit(title=title, body=body)
+            return existing_issue.number
+        else:
+            new_issue = repo.create_issue(title=title, body=body)
+            return new_issue.number
     except (BadAttributeException, GithubException) as e:
         sys.exit(
-            ("Failed to create issue due to an exception from GitHub.\nThe "
-             "error returned by GitHub API was {}").format(e))
+            ("Failed to create or update issue due to an exception from GitHub."
+             "\nThe error returned by GitHub API was {}").format(e))
 
-    return new_issue.number
+
+def get_duplicate_issue(repo):
+    """Finds a GitHub issue for the current release, else return None"""
+    issues = repo.get_issues(creator="ts-bridge-bot",
+                             state="open", sort="updated")
+
+    title = ("Vulnerability found in release {}").format(FLAGS.release_tag)
+    # Filter out the issue with the same release number as current build
+    prev_issue = [issue for issue in issues if title in issue.title]
+
+    if prev_issue:
+        if len(prev_issue) > 1:
+            print("WARNING: More than one vulnerability issue exists for this "
+                  "release. We will work with the most recently updated issue.")
+        return prev_issue[0]
+    else:
+        return None
 
 
 def main(argv):
     validate_flags()
-    [trivy_result, trivy_table] = load_results()
+    [trivy_json, trivy_table] = load_results()
+
+    repo = get_github_repo()
+    existing_issue = get_duplicate_issue(repo)
 
     # Examine results to check if vulnerabilities were found
-    vulnerabilities = trivy_result["Vulnerabilities"]
+    vulnerabilities = trivy_json["Vulnerabilities"]
     if vulnerabilities:
         num_vulnerabilities = len(vulnerabilities)
         severity_list = get_severity_list(vulnerabilities)
-        issue_number = create_issue(trivy_result, num_vulnerabilities,
-                                    severity_list, trivy_table)
+
+        title, body = build_issue(
+            num_vulnerabilities, severity_list, trivy_table, trivy_json)
+        issue_number = create_or_update_issue(
+            repo, existing_issue, title, body)
 
         details = ("{} vulnerabilities of type: [{}] were found in image. "
-                   "Please refer to issue: {} for details.").format(
+                   "Please refer to issue #{} for details.").format(
                        num_vulnerabilities, ",".join(severity_list), issue_number)
         print(details)
 
@@ -184,6 +215,13 @@ def main(argv):
         else:
             print("Images will be published to GCR.")
     else:
+        if existing_issue:
+            details = ("Closing Issue #{} since vulnerabilities have been resolved").format(
+                existing_issue.number)
+            print(details)
+            existing_issue.create_comment(details)
+            existing_issue.edit(state="closed")
+
         print("No vulnerabilities found. Images will be published to GCR.")
 
 
