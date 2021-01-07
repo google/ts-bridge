@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/tasks"
 	"github.com/google/ts-bridge/web"
 
@@ -143,6 +144,10 @@ func main() {
 	http.HandleFunc("/cleanup", h.Cleanup)
 	http.HandleFunc("/health", h.Health)
 
+	if err := CreateExternalConnections(context.Background(), config); err != nil {
+		log.Fatalf("failed running CreateExternalConnections() routine: %v", err)
+	}
+
 	// Run a cleanup on startup
 	log.Debugf("Performing startup cleanup...")
 	if err := tasks.Cleanup(context.Background(), config); err != nil {
@@ -182,6 +187,20 @@ func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.C
 			return
 		}
 	}
+}
+
+// CreateExternalConnections will establish connections to all external dependencies
+func CreateExternalConnections(ctx context.Context, config *tsbridge.Config) error {
+	var err error
+	config.Dependencies.SDClient, err = stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
+	if err != nil {
+		return fmt.Errorf("unable to initialize stackdriver adapter: %v", err)
+	}
+	config.Dependencies.StatsCollector, err = tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject, config.Options.MonitoringBackends)
+	if err != nil {
+		return fmt.Errorf("unable to initialize stats collector: %v", err)
+	}
+	return nil
 }
 
 func validateFlags() error {

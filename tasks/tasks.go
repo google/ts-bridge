@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/google/ts-bridge/boltdb"
 	"github.com/google/ts-bridge/datastore"
@@ -17,11 +16,8 @@ import (
 )
 
 var (
-	sdClient     *stackdriver.Adapter
-	sdClientOnce sync.Once
-
-	statsCollector     *tsbridge.StatsCollector
-	statsCollectorOnce sync.Once
+	sdClient       *stackdriver.Adapter
+	statsCollector *tsbridge.StatsCollector
 )
 
 // LoadStorageEngine is a helper function to load the correct storage manager depending on settings
@@ -55,28 +51,7 @@ func Sync(ctx context.Context, config *tsbridge.Config) error {
 		return err
 	}
 
-	var errSync []error
-
-	sdClientOnce.Do(func() {
-		sdClient, err = stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
-		if err != nil {
-			errSync = append(errSync, fmt.Errorf("unable to initialize stackdriver adapter: %v", err))
-		}
-	})
-
-	statsCollectorOnce.Do(func() {
-		statsCollector, err = tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject, config.Options.MonitoringBackends)
-		if err != nil {
-			errSync = append(errSync, fmt.Errorf("unable to initialize stats collector: %v", err))
-		}
-	})
-
-	// Process errors from Once.Do blocks since we cannot return in those
-	if len(errSync) > 0 {
-		return fmt.Errorf("errors occured during sync init: %v", errSync)
-	}
-
-	if errs := tsbridge.UpdateAllMetrics(ctx, metrics, sdClient, config.Options.UpdateParallelism, statsCollector); errs != nil {
+	if errs := tsbridge.UpdateAllMetrics(ctx, metrics, config.Dependencies.SDClient, config.Options.UpdateParallelism, config.Dependencies.StatsCollector); errs != nil {
 		msg := strings.Join(errs, "; ")
 		return errors.New(msg)
 	}
