@@ -51,7 +51,8 @@ flags.DEFINE_string("trivy_file", None,
                     "Name of the files where results from Trivy are stored")
 
 
-def validate_flags():
+def validate_files():
+    """Validate that the files given through flags exists in the curr dir."""
     error = None
     if not Path("{}.json".format(FLAGS.trivy_file)).is_file():
         error = ("Please run \n"
@@ -75,14 +76,15 @@ def load_results():
     trivy_out_json = "{}.json".format(FLAGS.trivy_file)
     trivy_out_table = "{}.table".format(FLAGS.trivy_file)
     with open(trivy_out_json) as f:
-        # trivy_result is the json result used for parsing vulnerabilities
+        # trivy_json is a dictionary of the JSON result used for parsing
+        # vulnerabilities.
         # Index is 0 because there is only one target built.
-        trivy_result = json.load(f)[0]
+        trivy_json = json.load(f)[0]
     with open(trivy_out_table) as f:
         # trivy_table is the results in a more readable table format which can
         # be included in GitHub issues.
         trivy_table = f.read()
-    return [trivy_result, trivy_table]
+    return [trivy_json, trivy_table]
 
 
 def get_severity_list(vulnerabilities):
@@ -112,7 +114,7 @@ def get_github_repo():
 
 
 def build_issue(num_vulnerabilities, severity_list, table, json_output):
-    """Creates the title and body of the GitHub issue"""
+    """Creates the title and body of the GitHub issue."""
     title = ("Vulnerability found in release {}").format(FLAGS.release_tag)
 
     body = ("Trivy has detected {} vulnerabilities in your latest "
@@ -156,9 +158,9 @@ def create_or_update_issue(repo, existing_issue, title, body):
         if existing_issue:
             existing_issue.edit(title=title, body=body)
             return existing_issue.number
-        else:
-            new_issue = repo.create_issue(title=title, body=body)
-            return new_issue.number
+
+        new_issue = repo.create_issue(title=title, body=body)
+        return new_issue.number
     except (BadAttributeException, GithubException) as e:
         sys.exit(
             ("Failed to create or update issue due to an exception from GitHub."
@@ -184,7 +186,26 @@ def get_duplicate_issue(repo):
 
 
 def process_vulnerabilities(repo, existing_issue, trivy_json, trivy_table):
-    """Update issue and build log based on non-empty vulnerabilities."""
+    """Updates issue and build log based on non-empty vulnerabilities.
+
+    Converts the Trivy output into a formatted title and body for a GitHub
+    Issue, then creates or updates this issue on GitHub. Also produces a build
+    log message and fails the build if vulnerabilties with HIGH or CRITICAL
+    severity has been found.
+
+    Args:
+        repo (github.Repository): the repository where the issue will be posted.
+        existing_issue (github.Issue): the duplicate on issue on GitHub for
+            the current release, if it exists. Otherwise None.
+        trivy_json (dict): parsed from Trivy's JSON result using load_results().
+        trivy_table (str): Trivy results in a more readable table format which
+            to be included in GitHub issues. Also read using load_results().
+
+    Raises:
+        SystemExit: If vulnerabilities with high or critical severity has been
+            found.
+
+    """
     vulnerabilities = trivy_json["Vulnerabilities"]
     num_vulnerabilities = len(vulnerabilities)
     severity_list = get_severity_list(vulnerabilities)
@@ -203,8 +224,9 @@ def process_vulnerabilities(repo, existing_issue, trivy_json, trivy_table):
 
     # Fail build if high or critical vulnerabilities are found.
     if high_or_critical_exists(severity_list):
-        sys.exit("Build will be aborted and "
-                 "new images will not be pushed to GCR.")
+        sys.exit("Build will be aborted due to high and/or critical "
+                 "vulnerabilities found in the new images. The new "
+                 "images will not be pushed to GCR.")
     else:
         print("Images will be published to GCR.")
 
@@ -220,7 +242,8 @@ def close_issue(existing_issue):
 
 
 def main(argv):
-    validate_flags()
+    """Parse the Trivy results."""
+    validate_files()
     [trivy_json, trivy_table] = load_results()
 
     repo = get_github_repo()

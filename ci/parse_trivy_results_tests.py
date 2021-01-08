@@ -20,8 +20,13 @@ class TestParseTrivyResults(absltest.TestCase):
 
         self.mock_issue_dup = mock.Mock()
         self.mock_issue_dup.title = "Vulnerability found in release 0.0.0"
-        self.mock_issue_dup.body = "body"
+        self.mock_issue_dup.body = "body later"
         self.mock_issue_dup.number = 0
+
+        self.mock_issue_diff = mock.Mock()
+        self.mock_issue_diff.title = "Vulnerability found in release 1.1.1"
+        self.mock_issue_diff.body = "body"
+        self.mock_issue_diff.number = 2
 
         self.trivy_json_empty = dict()
         self.trivy_json_empty["Vulnerabilities"] = []
@@ -39,24 +44,36 @@ class TestParseTrivyResults(absltest.TestCase):
         self.mock_repo.create_issue.return_value = self.mock_issue_dup
 
     def test_get_duplicate_issue_no_duplicates(self):
+        """Tests that None is returned when no duplicates exist in the repo."""
+
         self.mock_repo.get_issues.return_value = []
         existing_issue = get_duplicate_issue(self.mock_repo)
         self.assertIsNone(existing_issue)
 
     def test_get_duplicate_issue_one_duplicate(self):
-        self.mock_repo.get_issues.return_value = [self.mock_issue_dup]
+        """Tests that the correct issue is returned when there is one duplicate."""
+
+        self.mock_repo.get_issues.return_value = [
+            self.mock_issue_diff, self.mock_issue_dup]
         existing_issue = get_duplicate_issue(self.mock_repo)
         self.assertIsNotNone(existing_issue)
         self.assertIs(existing_issue, self.mock_issue_dup)
 
     def test_get_duplicate_issue_two_duplicates(self):
+        """Tests that the first issue is returned when there are two duplicates."""
+
+        mock_issue_dup_earlier = mock.Mock()
+        mock_issue_dup_earlier.title = "Vulnerability found in release 0.0.0"
+
         self.mock_repo.get_issues.return_value = [
-            self.mock_issue_dup, self.mock_issue_dup]
+            self.mock_issue_dup, mock_issue_dup_earlier]
         existing_issue = get_duplicate_issue(self.mock_repo)
         self.assertIsNotNone(existing_issue)
         self.assertIs(existing_issue, self.mock_issue_dup)
 
     def test_process_vulnerabilities_low_severity_no_dup(self):
+        """Tests that an issue is created when there are no duplicates."""
+
         process_vulnerabilities(self.mock_repo, None,
                                 self.trivy_json_low, "table")
         expected_title = "Vulnerability found in release 0.0.0"
@@ -64,6 +81,8 @@ class TestParseTrivyResults(absltest.TestCase):
             title=expected_title, body=mock.ANY)
 
     def test_process_vulnerabilities_high_severity_no_dup(self):
+        """Tests that the build fails and an issue is created when there is a high severity vulnerability."""
+
         with self.assertRaises(SystemExit):
             process_vulnerabilities(
                 self.mock_repo, None, self.trivy_json_high, "table")
@@ -80,6 +99,8 @@ class TestParseTrivyResults(absltest.TestCase):
         self.assertIn(expected_in_body, kwargs["body"])
 
     def test_process_vulnerabilities_mixed_severity_dup(self):
+        """Tests that the build fails and an issue is created when there is a mix of severity in vulnerabilities."""
+
         with self.assertRaises(SystemExit):
             process_vulnerabilities(
                 self.mock_repo, self.mock_issue_dup, self.trivy_json_mixed, "table")
