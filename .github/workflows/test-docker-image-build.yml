@@ -1,0 +1,32 @@
+name: Test Build the Docker Image
+on:
+  workflow_dispatch:
+    # Allow manual triggers via GitHub Actions tab
+  pull_request:
+    types: [opened, reopened, edited, synchronised]
+    branches:
+      - master
+jobs:
+  test-docker-image-build:
+    name: Build Image and Run Trivy Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Create a test tag
+        run: echo "image-tag=ts-bridge:test" >> $GITHUB_ENV
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          push: false
+          tags: ${{ env.image-tag }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.image-tag }}
+          format: 'table'
+          ignore-unfixed: true
+          exit-code: '1' # Exit with 1 if vulnerabilities listed below are found.

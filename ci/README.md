@@ -1,9 +1,10 @@
-# ts-bridge CI
+# ts-bridge CI with Cloud Build
 
 This CI automates the building and releasing of ts-bridge images for public
 use on Google Container Registry. ts-bridge images are built using
 [Google Cloud Build](https://cloud.google.com/cloud-build/docs/automating-builds/run-builds-on-github)
 through [cloudbuild.yaml](https://github.com/google/ts-bridge/blob/master/ci/cloudbuild.yaml).
+To view the documentation for dev builds, please refer to [CI with GitHub Actions](https://github.com/google/ts-bridge/blob/master/.github/workflows/README.md).
 
 <!-- TODO: remove the first sentence below when GCP is made public. -->
 **WIP:** The images stored on GCR have not yet been made public. We are waiting
@@ -15,17 +16,14 @@ for permissions internally. Once they have been made public, anyone can pull the
 
 The complete flowchart for CI is shown below:
 
-![TS-Bridge Cloud Build Flowchart](static/ts-bridge.png)
+![TS-Bridge Cloud Build Flowchart](static/ts-bridge-cloud-build.png)
 
 ### Triggers
 Cloud Build triggers are configured purely on Google Cloud Platform (GCP, not on
 GitHub), which this repo is connected to. The CloudBuild trigger events which will be used for this project are as follows:
 
-**Prod triggers:**
 * A trigger on every push to a released tag
-* A trigger on every push to a pull request
-* A manual trigger for re-building
-* A scheduled trigger to run every period
+* (WIP) A scheduled trigger to run every period
 
 <!-- TODO: remove the line below when GCP is made public. -->
 Please note that currently Cloud Build triggers can only be accessed and modified by

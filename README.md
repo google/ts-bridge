@@ -172,6 +172,11 @@ docker run -p 8080:8080 \
 1.  Verify in the Stackdriver metrics explorer that metrics are being imported
     once a minute
 
+# CI
+There are two builds for this project's docker image(s):
+* [Dev Build]((https://github.com/google/ts-bridge/blob/master/.github/workflows/README.md)), which uses GitHub Actions
+* [Prod build](https://github.com/google/ts-bridge/blob/master/ci/README.md), which uses Google Cloud Build
+
 # metrics.yaml Configuration
 
 Metric sources and targets are configured in the `app/metrics.yaml` file.
@@ -224,9 +229,9 @@ In case of AppEngine variables are configured in the `env_variables` section of 
 *   `DEBUG` (`--debug`): enable debug logging.
 *   `PORT` (`--port`): ts-bridge server port.
 *   `CONFIG_FILE` (`--metric-config`): name of the metric configuration file (`metrics.yaml`).
-*   `SD_LOOKBACK_INTERVAL` (`--sd-lookback-interval`): time interval used while 
+*   `SD_LOOKBACK_INTERVAL` (`--sd-lookback-interval`): time interval used while
     searching for recent data in Stackdriver. This is also the default backfill
-    interval for when no recent points are found. This interval should be kept 
+    interval for when no recent points are found. This interval should be kept
     reasonably short to avoid fetching too much data from Stackdriver on each update.
     *   You might be tempted to increase this significantly to backfill historic
         values. Please keep in mind that Stackdriver
@@ -244,16 +249,16 @@ In case of AppEngine variables are configured in the `env_variables` section of 
     still happen in the context of a single incoming HTTP request, and setting this
     value too high might result in the App Engine instance running out of RAM.
 *   `MIN_POINT_AGE` (`--min-point-age`): minimum age of a data point returned by a
-    metric source that makes it eligible for being written. Points that are very 
+    metric source that makes it eligible for being written. Points that are very
     fresh (default is 1.5 minutes) are ignored, since the metric source might return
     incomplete data for them if some input data is delayed.
 *   `COUNTER_RESET_INTERVAL` (`--counter-reset-interval`): while importing counters,
-    ts-bridge needs to reset 'start time' regularly to keep the query time window 
+    ts-bridge needs to reset 'start time' regularly to keep the query time window
     small enough. This parameter defines how often a new start time is chosen, and
-    defaults to 30 minutes. See [Cumulative metrics](#cumulative-metrics) section 
+    defaults to 30 minutes. See [Cumulative metrics](#cumulative-metrics) section
     below for more details.
 *   `STORAGE_ENGINE` (`--storage-engine`): storage engine to use for storing metric
-    metadata, defaults to `datastore`.  
+    metadata, defaults to `datastore`.
     * `datastore` - use AppEngine Datastore
     * `boltdb` - use [BoltDB](https://github.com/etcd-io/bbolt) via [BoltHold](https://github.com/timshannon/bolthold)
         * `BOLTDB_PATH` (`--boltdb-path`) - path to BoltDB store, e.g. `/data/bolt.db` (defaults to `$PWD/bolt.db`)
