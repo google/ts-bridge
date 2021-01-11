@@ -14,24 +14,38 @@ on:
     types: [created, edited, published]
 
 jobs:
-  install-and-run:
-    name: Install go and run tests
+  project-go-version:
+    name: Export current go version
     runs-on: ubuntu-latest
-    env:
-      CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+    outputs:
+      go-version: ${{ steps.go.outputs.go-version }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
 
       - name: Set Go version
-        run: echo "go-version=$(cat .go-version)" >> $GITHUB_ENV
+        id: go
+        run: echo "::set-output name=go-version::$(cat .go-version)"
 
-      - name: Set up Go according to .go-version
+
+  install-and-run:
+    name: Install go and run tests
+    needs: project-go-version
+    runs-on: ubuntu-latest
+    env:
+      CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+    strategy:
+      matrix:
+        go-version: ["${{needs.project-go-version.outputs.go-version}}", "^1.*", "1.14.x"]
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Set up Go with ${{ matrix.go-version }}
         uses: actions/setup-go@v2
-        # TODO(https://github.com/google/ts-bridge/issues/70): Test with
-        # different versions of Go.
         with:
-          go-version: ${{ env.go-version }}
+          go-version: ${{ matrix.go-version }}
+          stable: false
 
       - name: Set up gcloud datastore emulator
         # JRE is needed for the datastore emulator
