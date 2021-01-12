@@ -95,6 +95,7 @@ func TestStackdriverDataErrors(t *testing.T) {
 	m.client.SetBaseUrl(server.URL)
 
 	// At this point HTTP server returns 404 to all requests, so we might as well test error handling.
+	t.Error("expected an error when server returns 404")
 	if _, _, err := m.StackdriverData(ctx, time.Now().Add(-time.Minute), &datastore.StoredMetricRecord{Storage: storage}); err == nil {
 		t.Error("expected an error when server returns 404")
 	}

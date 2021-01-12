@@ -31,12 +31,16 @@ jobs:
   install-and-run:
     name: Install go and run tests
     needs: project-go-version
+    if: always()
     runs-on: ubuntu-latest
     env:
       CLOUDSDK_CORE_DISABLE_PROMPTS: 1
     strategy:
       matrix:
-        go-version: ["${{needs.project-go-version.outputs.go-version}}", "^1.*", "1.14.x", "1.16.0-beta1"]
+        go-version: ["${{needs.project-go-version.outputs.go-version}}", "^1.*", "1.14.x"]
+        include:
+          - go-version: "1.16.0-beta1"
+            prerelease: true
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
@@ -55,6 +59,7 @@ jobs:
           sudo apt-get install openjdk-8-jre-headless
 
       - name: Run tests
+        continue-on-error: ${{ matrix.prerelease }}
         run: |
           source $HOME/google-cloud-sdk/path.bash.inc
           go mod download
@@ -65,6 +70,7 @@ jobs:
           go generate ./...
 
       - name: Annotate Tests
+        # Annotate failed tests
         if: always()
         uses: guyarb/golang-test-annotations@v0.2.0
         with:
