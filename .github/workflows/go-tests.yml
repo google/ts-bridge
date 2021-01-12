@@ -14,8 +14,10 @@ on:
     types: [created, edited, published]
 
 jobs:
+  # This separate step is required for the project's go-version to be exported
+  # for use in the following job's matrix.
   project-go-version:
-    name: Export current go version
+    name: Export project go version
     runs-on: ubuntu-latest
     outputs:
       go-version: ${{ steps.go.outputs.go-version }}
@@ -27,16 +29,16 @@ jobs:
         id: go
         run: echo "::set-output name=go-version::$(cat .go-version)"
 
-
   install-and-run:
-    name: Tests
+    name: Tests Go
     needs: project-go-version
     runs-on: ubuntu-latest
     env:
       CLOUDSDK_CORE_DISABLE_PROMPTS: 1
     strategy:
       matrix:
-        go-version: ["${{needs.project-go-version.outputs.go-version}}", "^1.*", "1.14.x"]
+        # Versions tested: Project version, version before latest, latest, pre-release
+        go-version: ["${{needs.project-go-version.outputs.go-version}}", "1.14.x", "1.15.x"]
         include:
           - go-version: "1.16.0-beta1"
             prerelease: true
@@ -60,6 +62,7 @@ jobs:
           sudo apt-get install openjdk-8-jre-headless
 
       - name: Run tests
+        # Allow tests to fail pre-release Go versions
         continue-on-error: ${{ matrix.prerelease }}
         run: |
           source $HOME/google-cloud-sdk/path.bash.inc
