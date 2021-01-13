@@ -39,6 +39,8 @@ jobs:
       matrix:
         # Versions tested: Project version, version before latest, latest, pre-release
         go-version: ["${{needs.project-go-version.outputs.go-version}}", "1.14.x", "1.15.x"]
+        # Pre-release tests provide early feedback if something breaks in the
+        # next Go release.
         include:
           - name: "(Pre-release)"
             go-version: "1.16.0-beta1"
@@ -63,7 +65,12 @@ jobs:
           sudo apt-get install openjdk-8-jre-headless
 
       - name: Run tests
-        # Allow tests to fail pre-release Go versions
+        # Since pre-release branches can be unstable we ignore test errors and
+        # still mark the workflow run as successful. This prevents pre-release
+        # test failures from blocking PR merges.
+
+        # TODO: Remove below setting when workflows have "allow-failure" option.
+        # See: https://github.com/actions/toolkit/issues/399
         continue-on-error: ${{ matrix.prerelease }}
         run: |
           source $HOME/google-cloud-sdk/path.bash.inc
