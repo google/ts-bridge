@@ -14,24 +14,48 @@ on:
     types: [created, edited, published]
 
 jobs:
-  install-and-run:
-    name: Install go and run tests
+  # This separate step is required for the project's go-version to be exported
+  # for use in the following job's matrix.
+  project-go-version:
+    name: Export project go version
     runs-on: ubuntu-latest
-    env:
-      CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+    outputs:
+      go-version: ${{ steps.go.outputs.go-version }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
 
       - name: Set Go version
-        run: echo "go-version=$(cat .go-version)" >> $GITHUB_ENV
+        id: go
+        run: echo "::set-output name=go-version::$(cat .go-version)"
 
-      - name: Set up Go according to .go-version
+  install-and-run:
+    name: Tests Go ${{ matrix.go-version }} ${{matrix.name}}
+    needs: project-go-version
+    runs-on: ubuntu-latest
+    env:
+      CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+    strategy:
+      matrix:
+        # Versions tested: Project version, version before latest, latest, pre-release
+        go-version: ["${{needs.project-go-version.outputs.go-version}}", "1.14.x", "1.15.x"]
+        # Pre-release tests provide early feedback if something breaks in the
+        # next Go release.
+        include:
+          - name: "(Pre-release)"
+            go-version: "1.16.0-beta1"
+            prerelease: true
+      # Prevent GHA from cancelling other matrix jobs if one fails
+      fail-fast: false
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Set up Go with ${{ matrix.go-version }}
         uses: actions/setup-go@v2
-        # TODO(https://github.com/google/ts-bridge/issues/70): Test with
-        # different versions of Go.
         with:
-          go-version: ${{ env.go-version }}
+          go-version: ${{ matrix.go-version }}
+          stable: 'false'
 
       - name: Set up gcloud datastore emulator
         # JRE is needed for the datastore emulator
@@ -41,6 +65,13 @@ jobs:
           sudo apt-get install openjdk-8-jre-headless
 
       - name: Run tests
+        # Since pre-release branches can be unstable we ignore test errors and
+        # still mark the workflow run as successful. This prevents pre-release
+        # test failures from blocking PR merges.
+
+        # TODO: Remove below setting when workflows have "allow-failure" option.
+        # See: https://github.com/actions/toolkit/issues/399
+        continue-on-error: ${{ matrix.prerelease }}
         run: |
           source $HOME/google-cloud-sdk/path.bash.inc
           go mod download
@@ -51,6 +82,7 @@ jobs:
           go generate ./...
 
       - name: Annotate Tests
+        # Annotate failed tests
         if: always()
         uses: guyarb/golang-test-annotations@v0.2.0
         with:
