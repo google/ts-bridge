@@ -2,7 +2,8 @@ name: Run Python Unit Tests
 
 on:
   push:
-    path: "ci/parse_trivy_results.py"
+    paths:
+      - 'ci/parse_trivy_results.py'
 
 jobs:
   run-python-tests:

@@ -14,7 +14,7 @@ steps:
 
 - name: 'python:3'
   id: 'Create version tags'
-  args: ['python3', 'ci/create-version-tags.py']
+  args: ['python3', 'ci/create_version_tags.py']
 
 # TODO(https://github.com/google/ts-bridge/issues/67): This step will mask all
 # errors from docker pull, not just when image doesn't exist. Consider using
@@ -68,7 +68,7 @@ steps:
   - |
     pip install PyGithub
     pip install absl-py
-    python3 ci/parse-trivy-results.py \
+    python3 ci/parse_trivy_results.py \
       --build_id=-$BUILD_ID \
       --commit_id=$SHORT_SHA \
       --release_tag=$$(cat _release_tag) \
