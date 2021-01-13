@@ -30,7 +30,7 @@ jobs:
         run: echo "::set-output name=go-version::$(cat .go-version)"
 
   install-and-run:
-    name: Tests Go
+    name: Tests Go ${{ matrix.go-version }} ${{matrix.name}}
     needs: project-go-version
     runs-on: ubuntu-latest
     env:
@@ -40,7 +40,8 @@ jobs:
         # Versions tested: Project version, version before latest, latest, pre-release
         go-version: ["${{needs.project-go-version.outputs.go-version}}", "1.14.x", "1.15.x"]
         include:
-          - go-version: "1.16.0-beta1"
+          - name: "(Pre-release)"
+            go-version: "1.16.0-beta1"
             prerelease: true
       # Prevent GHA from cancelling other matrix jobs if one fails
       fail-fast: false
