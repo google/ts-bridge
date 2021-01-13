@@ -1,0 +1,23 @@
+# Configures Dependabot to update package dependencies.
+version: 2
+updates:
+  # Check for version updates for Docker
+  - package-ecosystem: "docker"
+    # Location of Dockerfile
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    # Set to '/' to check for workflows in .github/workflows
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Keep Go modules up to date
+  - package-ecosystem: "gomod"
+    # Location of go.mod
+    directory: "/"
+    schedule:
+      interval: "weekly"
