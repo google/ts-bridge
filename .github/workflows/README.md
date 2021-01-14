@@ -22,7 +22,7 @@ Runs Go unit tests on latest (1.15.x), major release before latest (1.14.x), pre
 
 **File:** `go-releaser.yml`
 
-**Triggers**: `push`, `pull_request`, `release`
+**Triggers**: `push` to `version/ts-bridge-version.go` only
 
 Automatically create a release tag (with an empty body) for the commit, then run [GoReleaser](https://goreleaser.com/) to create a draft release with the same tag. The draft release will have its body pre-filled with a changelog, with its assets being go binaries and a source archive([Details](https://github.com/google/ts-bridge/pull/75)).
 
@@ -38,7 +38,7 @@ Runs unit tests for the Trivy results parser, which is used for automated Trivy 
 
 **File:** `test-docker-image-build.yml`
 
-**Triggers**: `push` to `version/ts-bridge-version.go` only
+**Triggers**: `pull_request`, `workflow_dispatch` (Manual triggers enabled)
 
 To ensure that PRs do not negatively affect docker builds and trivy scans on
 existing public images, this workflow performs similar

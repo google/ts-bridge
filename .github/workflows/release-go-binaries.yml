@@ -2,7 +2,8 @@ name: Tag and Release Go Binaries
 
 on:
   push:
-    branches: go-releaser
+    paths:
+      - "version/ts-bridge-version.go"
 
 jobs:
   tag-current-commit:
