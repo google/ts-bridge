@@ -1,21 +1,21 @@
-# Configures Dependabot to update package dependencies.
+# Configures Dependabot to create pull requests when package dependency updates are found.
 version: 2
 updates:
-  # Check for version updates for Docker
+  # Keep Docker image layers up to date.
   - package-ecosystem: "docker"
     # Location of Dockerfile
     directory: "/"
     schedule:
       interval: "weekly"
 
-  # Keep GitHub Actions up to date
+  # Keep GitHub Actions up to date.
   - package-ecosystem: "github-actions"
     # Set to '/' to check for workflows in .github/workflows
     directory: "/"
     schedule:
       interval: "weekly"
 
-  # Keep Go modules up to date
+  # Keep Go modules up to date.
   - package-ecosystem: "gomod"
     # Location of go.mod
     directory: "/"
