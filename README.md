@@ -173,8 +173,10 @@ docker run -p 8080:8080 \
     once a minute
 
 # CI
-There are two builds for this project's docker image(s):
-* [Dev Build]((https://github.com/google/ts-bridge/blob/master/.github/workflows/README.md)), which uses GitHub Actions
+[`.github/workflows`](https://github.com/google/ts-bridge/blob/master/.github/workflows) contains a number of GitHub Actions used to automate releases, security scans, tests and dev builds for ts-bridge.
+
+There are two builds for this project's Docker image(s):
+* [Dev Build](https://github.com/google/ts-bridge/blob/master/.github/workflows/README.md), which uses GitHub Actions
 * [Prod build](https://github.com/google/ts-bridge/blob/master/ci/README.md), which uses Google Cloud Build
 
 # metrics.yaml Configuration

@@ -27,6 +27,6 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.image-tag }}
-          format: 'table'
+          format: "table"
           ignore-unfixed: true
-          exit-code: '1' # Exit with 1 if vulnerabilities listed below are found.
+          exit-code: "1" # Exit with 1 if vulnerabilities listed below are found.

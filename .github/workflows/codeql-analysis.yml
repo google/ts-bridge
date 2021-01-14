@@ -1,7 +1,7 @@
 # This workflow is based on the auto-generated file created by following GitHub documentation.
 # See: https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/enabling-code-scanning-for-a-repository#enabling-code-scanning-using-actions
 
-name: "CodeQL"
+name: Code Scanning with CodeQL
 
 on:
   push:
