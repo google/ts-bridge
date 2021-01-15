@@ -17,9 +17,10 @@ package datastore
 import (
 	"cloud.google.com/go/datastore"
 	"context"
+		"time"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"time"
+
 )
 
 // Name of the Datastore kind where metric records are stored.
@@ -27,17 +28,17 @@ const kindName = "MetricRecords"
 
 // StoredMetricRecord defines a Datastore entity that is used to store status information about an imported metric.
 type StoredMetricRecord struct {
-	Name        string
+	      Name        string
 	Query       string
 	LastUpdate  time.Time // last time we wrote any points to SD.
-	LastAttempt time.Time // last time we attempted an update.
+	  LastAttempt time.Time // last time we attempted an update.
 	LastStatus  string
 
 	// CounterStartTime is used to keep start timestamp for cumulative metrics.
 	CounterStartTime time.Time
 
 	// Storage provides access to
-	Storage *Manager
+	   Storage *Manager
 }
 
 // Write metric data back to Datastore.
