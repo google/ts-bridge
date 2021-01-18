@@ -2,14 +2,11 @@ package tsbridge
 
 import (
 	"time"
-
-	"github.com/google/ts-bridge/stackdriver"
 )
 
 // Config holds all the ConfigOptions
 type Config struct {
-	Options      ConfigOptions
-	Dependencies ExternalDependencies
+	Options ConfigOptions
 }
 
 // ConfigOptions  a set of global options required to initialize configuration.
@@ -27,11 +24,6 @@ type ConfigOptions struct {
 	UpdateParallelism        int
 	UpdateTimeout            time.Duration
 	SyncPeriod               time.Duration
-}
-
-type ExternalDependencies struct {
-	SDClient       *stackdriver.Adapter
-	StatsCollector *StatsCollector
 }
 
 // NewConfig returns a new ConfigOptions struct.

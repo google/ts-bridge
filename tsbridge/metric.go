@@ -19,10 +19,12 @@ package tsbridge
 import (
 	"context"
 	"fmt"
-	"github.com/google/ts-bridge/storage"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/google/ts-bridge/stackdriver"
+	"github.com/google/ts-bridge/storage"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -36,6 +38,20 @@ type Metric struct {
 	Source    SourceMetric
 	SDProject string
 	Record    storage.MetricRecord
+}
+
+// UpdateMetrics contains all external metric dependencies
+type UpdateMetrics struct {
+	SDClient       StackdriverAdapter
+	StatsCollector *StatsCollector
+}
+
+// NewExternalMetrics returns a UpdateMetrics struct.
+func NewUpdateMetrics(ctx context.Context, sd *stackdriver.Adapter, sc *StatsCollector) *UpdateMetrics {
+	return &UpdateMetrics{
+		SDClient:       sd,
+		StatsCollector: sc,
+	}
 }
 
 //go:generate mockgen -destination=../mocks/mock_source_metric.go -package=mocks github.com/google/ts-bridge/tsbridge SourceMetric
@@ -56,12 +72,12 @@ type StackdriverAdapter interface {
 	Close() error
 }
 
-// UpdateAllMetrics updates all metrics listed in a given config.
-func UpdateAllMetrics(ctx context.Context, c *MetricConfig, sd StackdriverAdapter, parallelism int, s *StatsCollector) (errors []string) {
+// All updates all metrics listed in a given config.
+func (u *UpdateMetrics) All(ctx context.Context, c *MetricConfig, parallelism int) (errors []string) {
 	oldestWrite := time.Now()
 	defer func(start time.Time) {
-		stats.Record(ctx, s.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
-		stats.Record(ctx, s.OldestMetricAge.M(int64(time.Since(oldestWrite)/time.Millisecond)))
+		stats.Record(ctx, u.StatsCollector.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
+		stats.Record(ctx, u.StatsCollector.OldestMetricAge.M(int64(time.Since(oldestWrite)/time.Millisecond)))
 	}(time.Now())
 
 	errchan := make(chan string, len(c.Metrics()))
@@ -75,7 +91,7 @@ func UpdateAllMetrics(ctx context.Context, c *MetricConfig, sd StackdriverAdapte
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			err := metric.Update(ctx, sd, s)
+			err := metric.Update(ctx, u.SDClient, u.StatsCollector)
 			if err != nil {
 				errchan <- err.Error()
 			}
