@@ -3,7 +3,7 @@ module github.com/google/ts-bridge
 go 1.13
 
 require (
-	cloud.google.com/go v0.72.0
+	cloud.google.com/go v0.75.0
 	cloud.google.com/go/datastore v1.3.0
 	contrib.go.opencensus.io/exporter/prometheus v0.2.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.4
@@ -14,7 +14,6 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.3 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/influxdata/influxql v1.1.0
 	github.com/prometheus/client_golang v1.8.0 // indirect
@@ -24,13 +23,8 @@ require (
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.22.5
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
-	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58 // indirect
-	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba // indirect
-	golang.org/x/tools v0.0.0-20201116002733-ac45abd4c88c // indirect
-	google.golang.org/api v0.35.0
-	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20201113130914-ce600e9a6f9e
+	google.golang.org/api v0.36.0
+	google.golang.org/genproto v0.0.0-20210108203827-ffc7fda8c3d7
 	google.golang.org/grpc v1.35.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
