@@ -41,14 +41,14 @@ type Metric struct {
 }
 
 // UpdateMetrics contains all external metric dependencies
-type UpdateMetrics struct {
+type Metrics struct {
 	SDClient       StackdriverAdapter
 	StatsCollector *StatsCollector
 }
 
-// NewExternalMetrics returns a UpdateMetrics struct.
-func NewUpdateMetrics(ctx context.Context, sd *stackdriver.Adapter, sc *StatsCollector) *UpdateMetrics {
-	return &UpdateMetrics{
+// New returns a Metrics struct.
+func New(ctx context.Context, sd *stackdriver.Adapter, sc *StatsCollector) *Metrics {
+	return &Metrics{
 		SDClient:       sd,
 		StatsCollector: sc,
 	}
@@ -72,30 +72,30 @@ type StackdriverAdapter interface {
 	Close() error
 }
 
-// All updates all metrics listed in a given config.
-func (u *UpdateMetrics) All(ctx context.Context, c *MetricConfig, parallelism int) (errors []string) {
+// UpdateAll updates all metrics listed in a given config.
+func (m *Metrics) UpdateAll(ctx context.Context, c *MetricConfig, parallelism int) (errors []string) {
 	oldestWrite := time.Now()
 	defer func(start time.Time) {
-		stats.Record(ctx, u.StatsCollector.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
-		stats.Record(ctx, u.StatsCollector.OldestMetricAge.M(int64(time.Since(oldestWrite)/time.Millisecond)))
+		stats.Record(ctx, m.StatsCollector.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
+		stats.Record(ctx, m.StatsCollector.OldestMetricAge.M(int64(time.Since(oldestWrite)/time.Millisecond)))
 	}(time.Now())
 
 	errchan := make(chan string, len(c.Metrics()))
 	sem := make(chan bool, parallelism)
 	var wg sync.WaitGroup
 
-	for _, m := range c.Metrics() {
+	for _, mc := range c.Metrics() {
 		sem <- true
 		wg.Add(1)
 		go func(metric *Metric) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			err := metric.Update(ctx, u.SDClient, u.StatsCollector)
+			err := metric.Update(ctx, m.SDClient, m.StatsCollector)
 			if err != nil {
 				errchan <- err.Error()
 			}
-		}(m)
+		}(mc)
 	}
 	wg.Wait()
 	close(errchan)

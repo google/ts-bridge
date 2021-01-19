@@ -10,7 +10,7 @@ import (
 
 func TestHealthHandler(t *testing.T) {
 	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{})
-	h := NewHandler(config, &tsbridge.UpdateMetrics{})
+	h := NewHandler(config, &tsbridge.Metrics{})
 
 	req, err := http.NewRequest("GET", "/health", nil)
 	if err != nil {

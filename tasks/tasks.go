@@ -39,19 +39,18 @@ func LoadStorageEngine(ctx context.Context, config *tsbridge.Config) (storage.Ma
 }
 
 // Sync updates all configured metrics.
-func Sync(ctx context.Context, config *tsbridge.Config, updateMetrics *tsbridge.UpdateMetrics) error {
+func Sync(ctx context.Context, config *tsbridge.Config, metrics *tsbridge.Metrics) error {
 	store, err := LoadStorageEngine(ctx, config)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
 
-	metrics, err := tsbridge.NewMetricConfig(ctx, config, store)
+	metricCfg, err := tsbridge.NewMetricConfig(ctx, config, store)
 	if err != nil {
 		return err
 	}
-
-	if errs := updateMetrics.All(ctx, metrics, config.Options.UpdateParallelism); errs != nil {
+	if errs := metrics.UpdateAll(ctx, metricCfg, config.Options.UpdateParallelism); errs != nil {
 		msg := strings.Join(errs, "; ")
 		return errors.New(msg)
 	}

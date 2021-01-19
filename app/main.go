@@ -137,13 +137,13 @@ func main() {
 		SyncPeriod:               *syncPeriod,
 	})
 
-	updateMetrics, err := Dial(context.Background(), config)
+	metrics, err := CreateMetrics(context.Background(), config)
 	if err != nil {
 		log.Fatalf("failed dialing dependencies: %v", err)
 	}
-	defer cleanup(updateMetrics)
+	defer cleanup(metrics)
 
-	h := web.NewHandler(config, updateMetrics)
+	h := web.NewHandler(config, metrics)
 	http.HandleFunc("/", h.Index)
 	http.HandleFunc("/sync", h.Sync)
 	http.HandleFunc("/cleanup", h.Cleanup)
@@ -160,7 +160,7 @@ func main() {
 	if !env.IsAppEngine() {
 		log.Debug("Running outside of appengine, starting up a sync loop...")
 		ctx, cancel := context.WithCancel(context.Background())
-		go syncLoop(ctx, cancel, config, updateMetrics)
+		go syncLoop(ctx, cancel, config, metrics)
 	}
 
 	// Build a connection string, e.g. ":8080"
@@ -172,7 +172,7 @@ func main() {
 
 }
 
-func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config, updateMetrics *tsbridge.UpdateMetrics) {
+func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config, metrics *tsbridge.Metrics) {
 	defer cancel()
 	for {
 		select {
@@ -180,7 +180,7 @@ func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.C
 			log.Debugf("Goroutines: %v", runtime.NumGoroutine())
 			ctx, cancel := context.WithTimeout(ctx, config.Options.UpdateTimeout)
 			log.WithContext(ctx).Debugf("Running sync...")
-			if err := tasks.Sync(ctx, config, updateMetrics); err != nil {
+			if err := tasks.Sync(ctx, config, metrics); err != nil {
 				log.WithContext(ctx).Errorf("error running sync() routine: %v", err)
 			}
 			cancel()
@@ -190,8 +190,8 @@ func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.C
 	}
 }
 
-// Dial connections to all external dependencies
-func Dial(ctx context.Context, config *tsbridge.Config) (*tsbridge.UpdateMetrics, error) {
+// CreateMetrics returns a Metrics struct containing external dependencies.
+func CreateMetrics(ctx context.Context, config *tsbridge.Config) (*tsbridge.Metrics, error) {
 	sd, err := stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize stackdriver adapter: %v", err)
@@ -200,14 +200,12 @@ func Dial(ctx context.Context, config *tsbridge.Config) (*tsbridge.UpdateMetrics
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize stats collector: %v", err)
 	}
-	return tsbridge.NewUpdateMetrics(ctx, sd, sc), nil
+	return tsbridge.New(ctx, sd, sc), nil
 }
 
-func cleanup(updateMetrics *tsbridge.UpdateMetrics) {
-	defer updateMetrics.StatsCollector.Close()
-	var err error
-	err = updateMetrics.SDClient.Close()
-	if err != nil {
+func cleanup(metrics *tsbridge.Metrics) {
+	defer metrics.StatsCollector.Close()
+	if err := metrics.SDClient.Close(); err != nil {
 		log.Fatalf("Could not close Stackdriver client: %v", err)
 	}
 }
