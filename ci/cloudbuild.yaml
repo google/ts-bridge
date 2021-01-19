@@ -95,7 +95,7 @@ steps:
           --trivy_file=trivy-out
 substitutions:
   _REPO_NAME: google/ts-bridge
-  _DOCKER_BUILDX_PLATFORMS: "linux/arm64,linux/amd64"
+  _DOCKER_BUILDX_PLATFORMS: "linux/arm64,linux/amd64,linux/arm/v7"
 options:
   machineType: "N1_HIGHCPU_8"
   env:
