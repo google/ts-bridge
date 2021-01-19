@@ -139,7 +139,7 @@ func main() {
 
 	metrics, err := CreateMetrics(context.Background(), config)
 	if err != nil {
-		log.Fatalf("failed dialing dependencies: %v", err)
+		log.Fatalf("failed creating metric dependencies: %v", err)
 	}
 	defer cleanup(metrics)
 
