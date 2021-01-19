@@ -24,16 +24,20 @@ steps:
     args: ["-c", "docker pull gcr.io/$PROJECT_ID/ts-bridge:latest || exit 0"]
 
   - name: "gcr.io/cloud-builders/docker"
-    id: "initialize-qemu"
+    id: "Initialize QEMU and binfmt_misc for use in Docker Buildx"
+    # Flags (https://github.com/multiarch/qemu-user-static):
+    #   --reset: remove binfmt_misc entry files before registering a new entry
+    #   -p yes (--persistent yes): the QEMU interpreter is loaded when binfmt is configured and remains
+    #     in memory. All future uses are cloned from the open file.
     args:
       ["run", "--privileged", "multiarch/qemu-user-static", "--reset", "-p yes"]
 
   - name: "gcr.io/cloud-builders/docker"
-    id: "create-builder"
+    id: "Create Buildx builder"
     args: ["buildx", "create", "--name", "ts-bridge-builder"]
 
   - name: "gcr.io/cloud-builders/docker"
-    id: "select-builder"
+    id: "Select Buildx builder"
     args: ["buildx", "use", "ts-bridge-builder"]
 
   - name: "gcr.io/cloud-builders/docker"
@@ -70,7 +74,12 @@ steps:
       - "--no-progress"
       - "gcr.io/cre-tools/ts-bridge:git-$SHORT_SHA"
 
-  - name: gcr.io/cloud-builders/gcloud
+  # ts-bridge-bot is used to create GitHub issues when Trivy has found vulnerabilities in the
+  # new image(s). Its access token is stored as a gcloud secret, which must be extracted for use
+  # in the following step.
+  # See more: https://github.com/ts-bridge-bot
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "Parse ts-bridge-bot GitHub access token from secrets"
     entrypoint: "bash"
     args:
       [
@@ -99,6 +108,9 @@ substitutions:
 options:
   machineType: "N1_HIGHCPU_8"
   env:
+    # TODO: Docker Buildx is required for multi-arch builds. This feature is currently experimental.
+    # We should remove the following flag once the feature is released.
+    # See more: https://docs.docker.com/buildx/working-with-buildx/#high-level-build-options
     - "DOCKER_CLI_EXPERIMENTAL=enabled"
 # Push images to container registry
 images:
