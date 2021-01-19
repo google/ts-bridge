@@ -40,7 +40,7 @@ type Metric struct {
 	Record    storage.MetricRecord
 }
 
-// UpdateMetrics contains all external metric dependencies
+// Metrics contains all external metric dependencies
 type Metrics struct {
 	SDClient       StackdriverAdapter
 	StatsCollector *StatsCollector
