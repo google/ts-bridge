@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     # Allow manual triggers via GitHub Actions tab
   pull_request:
-    types: [opened, reopened, edited, synchronised]
+    types: [opened, reopened, edited, synchronize]
     branches:
       - master
 jobs:
