@@ -1,84 +1,117 @@
 steps:
+  # This step will fetch the entire git history so tags can be accessed during
+  # the build. If this negatively impacts build performance, please modify it so
+  # only commits up to the latest tag are fetched.
+  - name: "gcr.io/cloud-builders/git"
+    id: "Fetch tags from git"
+    args: [fetch, --unshallow]
 
-# This step will fetch the entire git history so tags can be accessed during
-# the build. If this negatively impacts build performance, please modify it so
-# only commits up to the latest tag are fetched.
-- name: 'gcr.io/cloud-builders/git'
-  id: 'Fetch tags from git'
-  args: [fetch, --unshallow]
+  - name: "gcr.io/cloud-builders/git"
+    id: "Get version from git tags"
+    entrypoint: "/bin/bash"
+    args: ["-c", "git describe --abbrev=0 --tags > _release_tag"]
 
-- name: 'gcr.io/cloud-builders/git'
-  id: 'Get version from git tags'
-  entrypoint: '/bin/bash'
-  args: ['-c', 'git describe --abbrev=0 --tags > _release_tag']
+  - name: "python:3"
+    id: "Create version tags"
+    args: ["python3", "ci/create_version_tags.py"]
 
-- name: 'python:3'
-  id: 'Create version tags'
-  args: ['python3', 'ci/create_version_tags.py']
+  # TODO(https://github.com/google/ts-bridge/issues/67): This step will mask all
+  # errors from docker pull, not just when image doesn't exist. Consider using
+  # a more optimal approach which can parse the output from docker pull to handle
+  # errors better.
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "/bin/bash"
+    args: ["-c", "docker pull gcr.io/$PROJECT_ID/ts-bridge:latest || exit 0"]
 
-# TODO(https://github.com/google/ts-bridge/issues/67): This step will mask all
-# errors from docker pull, not just when image doesn't exist. Consider using
-# a more optimal approach which can parse the output from docker pull to handle
-# errors better.
-- name: 'gcr.io/cloud-builders/docker'
-  entrypoint: '/bin/bash'
-  args: ['-c', 'docker pull gcr.io/$PROJECT_ID/ts-bridge:latest || exit 0']
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Initialize QEMU and binfmt_misc for use in Docker Buildx"
+    # Flags (https://github.com/multiarch/qemu-user-static):
+    #   --reset: remove binfmt_misc entry files before registering a new entry
+    #   -p yes (--persistent yes): the QEMU interpreter is loaded when binfmt is configured and remains
+    #     in memory. All future uses are cloned from the open file.
+    args:
+      ["run", "--privileged", "multiarch/qemu-user-static", "--reset", "-p yes"]
 
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Build image with custom tags'
-  entrypoint: '/bin/bash'
-  args:
-  - '-c'
-  - |
-    docker build -t gcr.io/$PROJECT_ID/ts-bridge:git-$SHORT_SHA \
-      -t gcr.io/$PROJECT_ID/ts-bridge:build-$BUILD_ID \
-      -t gcr.io/$PROJECT_ID/ts-bridge:$$(date -u +%Y%m%dT%H%M) \
-      -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _release_tag) \
-      -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MAJOR_TAG) \
-      -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MINOR_TAG) \
-      -t gcr.io/$PROJECT_ID/ts-bridge:latest \
-      --cache-from gcr.io/$PROJECT_ID/ts-bridge:latest .
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Create Buildx builder"
+    args: ["buildx", "create", "--name", "ts-bridge-builder"]
 
-- name: 'docker.io/aquasec/trivy:latest'
-  id: 'Scan newly built image using Trivy and create trivy-out.json'
-  args:
-  - 'image'
-  - '--format=json'
-  - '--output=trivy-out.json'
-  - '--no-progress'
-  - 'gcr.io/cre-tools/ts-bridge:git-$SHORT_SHA'
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Select Buildx builder"
+    args: ["buildx", "use", "ts-bridge-builder"]
 
-- name: 'docker.io/aquasec/trivy:latest'
-  id: 'Scan newly built image using Trivy and create trivy-out.table'
-  args:
-  - 'image'
-  - '--output=trivy-out.table'
-  - '--no-progress'
-  - 'gcr.io/cre-tools/ts-bridge:git-$SHORT_SHA'
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Build image with custom tags"
+    entrypoint: "/bin/bash"
+    args:
+      - "-c"
+      - |
+        docker buildx build --platform $_DOCKER_BUILDX_PLATFORMS \
+          -t gcr.io/$PROJECT_ID/ts-bridge:git-$SHORT_SHA \
+          -t gcr.io/$PROJECT_ID/ts-bridge:build-$BUILD_ID \
+          -t gcr.io/$PROJECT_ID/ts-bridge:$$(date -u +%Y%m%dT%H%M) \
+          -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _release_tag) \
+          -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MAJOR_TAG) \
+          -t gcr.io/$PROJECT_ID/ts-bridge:$$(cat _MINOR_TAG) \
+          -t gcr.io/$PROJECT_ID/ts-bridge:latest \
+          --cache-from gcr.io/$PROJECT_ID/ts-bridge:latest \
+          --push .
 
-- name: gcr.io/cloud-builders/gcloud
-  entrypoint: 'bash'
-  args: [ '-c', "gcloud secrets versions access latest --secret=Ts-bridge-bot-token --format='get(payload.data)' | tr '_-' '/+' | base64 -d > git_token.txt" ]
+  - name: "docker.io/aquasec/trivy:latest"
+    id: "Scan newly built image using Trivy and create trivy-out.json"
+    args:
+      - "image"
+      - "--format=json"
+      - "--output=trivy-out.json"
+      - "--no-progress"
+      - "gcr.io/cre-tools/ts-bridge:git-$SHORT_SHA"
 
-- name: 'python:3'
-  id: 'Parse results and check for vulnerabilities'
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - |
-    pip install PyGithub
-    pip install absl-py
-    python3 ci/parse_trivy_results.py \
-      --build_id=-$BUILD_ID \
-      --commit_id=$SHORT_SHA \
-      --release_tag=$$(cat _release_tag) \
-      --repo_name=$_REPO_NAME \
-      --token_file=git_token.txt \
-      --trivy_file=trivy-out
+  - name: "docker.io/aquasec/trivy:latest"
+    id: "Scan newly built image using Trivy and create trivy-out.table"
+    args:
+      - "image"
+      - "--output=trivy-out.table"
+      - "--no-progress"
+      - "gcr.io/cre-tools/ts-bridge:git-$SHORT_SHA"
+
+  # ts-bridge-bot is used to create GitHub issues when Trivy has found vulnerabilities in the
+  # new image(s). Its access token is stored as a gcloud secret, which must be extracted for use
+  # in the following step.
+  # See more: https://github.com/ts-bridge-bot
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "Parse ts-bridge-bot GitHub access token from secrets"
+    entrypoint: "bash"
+    args:
+      [
+        "-c",
+        "gcloud secrets versions access latest --secret=Ts-bridge-bot-token --format='get(payload.data)' | tr '_-' '/+' | base64 -d > git_token.txt",
+      ]
+
+  - name: "python:3"
+    id: "Parse results and check for vulnerabilities"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        pip install PyGithub
+        pip install absl-py
+        python3 ci/parse_trivy_results.py \
+          --build_id=-$BUILD_ID \
+          --commit_id=$SHORT_SHA \
+          --release_tag=$$(cat _release_tag) \
+          --repo_name=$_REPO_NAME \
+          --token_file=git_token.txt \
+          --trivy_file=trivy-out
 substitutions:
   _REPO_NAME: google/ts-bridge
+  _DOCKER_BUILDX_PLATFORMS: "linux/arm64,linux/amd64,linux/arm/v7"
 options:
-  machineType: 'N1_HIGHCPU_8'
+  machineType: "N1_HIGHCPU_8"
+  env:
+    # TODO: Docker Buildx is required for multi-arch builds. This feature is currently experimental.
+    # We should remove the following flag once the feature is released.
+    # See more: https://docs.docker.com/buildx/working-with-buildx/#high-level-build-options
+    - "DOCKER_CLI_EXPERIMENTAL=enabled"
 # Push images to container registry
 images:
-- gcr.io/$PROJECT_ID/ts-bridge
+  - gcr.io/$PROJECT_ID/ts-bridge
