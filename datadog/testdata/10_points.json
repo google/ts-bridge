@@ -1,0 +1,85 @@
+{
+    "from_date": 1531324712000,
+    "group_by": [],
+    "message": "",
+    "query": "avg:system.net.bytes_rcvd{*}",
+    "res_type": "time_series",
+    "resp_version": 1,
+    "series": [
+        {
+            "aggr": "avg",
+            "attributes": {},
+            "display_name": "system.net.bytes_rcvd",
+            "end": 1531324731000,
+            "expression": "avg:system.net.bytes_rcvd{*}",
+            "interval": 1,
+            "length": 10,
+            "metric": "system.net.bytes_rcvd",
+            "pointlist": [
+                [
+                    1531324713000,
+                    5779.598389549199
+                ],
+                [
+                    1531324715000,
+                    3492.2342382677284
+                ],
+                [
+                    1531324717000,
+                    2100.1129622200483
+                ],
+                [
+                    1531324719000,
+                    5776.072719513878
+                ],
+                [
+                    1531324721000,
+                    4025.677812614499
+                ],
+                [
+                    1531324723000,
+                    5489.354213482986
+                ],
+                [
+                    1531324725000,
+                    5797.799122484514
+                ],
+                [
+                    1531324727000,
+                    4014.9692706570336
+                ],
+                [
+                    1531324729000,
+                    5215.527950059265
+                ],
+                [
+                    1531324731000,
+                    3533.519126319705
+                ]
+            ],
+            "query_index": 0,
+            "scope": "*",
+            "start": 1531324713000,
+            "unit": [
+                {
+                    "family": "bytes",
+                    "id": 2,
+                    "name": "byte",
+                    "plural": "bytes",
+                    "scale_factor": 1.0,
+                    "short_name": "B"
+                },
+                {
+                    "family": "time",
+                    "id": 11,
+                    "name": "second",
+                    "plural": "seconds",
+                    "scale_factor": 1.0,
+                    "short_name": "s"
+                }
+            ]
+        }
+    ],
+    "status": "ok",
+    "to_date": 1531324732000
+}
