@@ -30,7 +30,7 @@ jobs:
         run: echo "::set-output name=go-version::$(cat .go-version)"
 
   install-and-run:
-    name: Tests Go ${{ matrix.go-version }} ${{matrix.name}}
+    name: Tests Go ${{ matrix.go-version }} ${{ matrix.name }}
     needs: project-go-version
     runs-on: ubuntu-latest
     env:
@@ -40,15 +40,16 @@ jobs:
         # Versions tested: Project version, version before latest, latest, pre-release
         go-version:
           [
-            "${{needs.project-go-version.outputs.go-version}}",
+            "${{ needs.project-go-version.outputs.go-version }}",
             "1.14.x",
             "1.15.x",
           ]
+        prerelease: [false]
         # Pre-release tests provide early feedback if something breaks in the
         # next Go release.
         include:
           - name: "(Pre-release)"
-            go-version: "1.16.0-beta1"
+            go-version: "1.16.0-rc1"
             prerelease: true
       # Prevent GHA from cancelling other matrix jobs if one fails
       fail-fast: false
@@ -100,6 +101,9 @@ jobs:
         run: rm test.json
 
       - name: Check that `gofmt` and `go generate` resulted in no diffs.
+        # TODO: Remove below setting when workflows have "allow-failure" option.
+        # See: https://github.com/actions/toolkit/issues/399
+        continue-on-error: ${{ matrix.prerelease }}
         run: |
           status=$(git status --porcelain)
           if [[ -n ${status} ]]; then
