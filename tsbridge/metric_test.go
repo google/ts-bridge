@@ -247,8 +247,12 @@ func TestUpdateAllMetrics(t *testing.T) {
 				tt.numMetrics * tt.numPoints).Return(nil)
 
 			collector, exporter := fakeStats(t)
+			metrics := &Metrics{
+				SDClient:       mockSD,
+				StatsCollector: collector,
+			}
 
-			if errs := UpdateAllMetrics(ctx, config, mockSD, tt.parallelism, collector); len(errs) > 0 {
+			if errs := metrics.UpdateAll(ctx, config, tt.parallelism); len(errs) > 0 {
 				t.Errorf("UpdateAllMetrics() returned errors: %v", errs)
 			}
 			collector.Close()
@@ -291,8 +295,12 @@ func TestUpdateAllMetricsErrors(t *testing.T) {
 	mockSD := mocks.NewMockStackdriverAdapter(mockCtrl)
 	collector, _ := fakeStats(t)
 	defer collector.Close()
+	metrics := &Metrics{
+		SDClient:       mockSD,
+		StatsCollector: collector,
+	}
 
-	errs := UpdateAllMetrics(ctx, config, mockSD, 1, collector)
+	errs := metrics.UpdateAll(ctx, config, 1)
 	if len(errs) != 1 {
 		t.Errorf("expected UpdateAllMetrics to return an error")
 	}

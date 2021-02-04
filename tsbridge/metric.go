@@ -19,10 +19,12 @@ package tsbridge
 import (
 	"context"
 	"fmt"
-	"github.com/google/ts-bridge/storage"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/google/ts-bridge/stackdriver"
+	"github.com/google/ts-bridge/storage"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -36,6 +38,20 @@ type Metric struct {
 	Source    SourceMetric
 	SDProject string
 	Record    storage.MetricRecord
+}
+
+// Metrics contains all external metric dependencies
+type Metrics struct {
+	SDClient       StackdriverAdapter
+	StatsCollector *StatsCollector
+}
+
+// New returns a Metrics struct.
+func New(ctx context.Context, sd *stackdriver.Adapter, sc *StatsCollector) *Metrics {
+	return &Metrics{
+		SDClient:       sd,
+		StatsCollector: sc,
+	}
 }
 
 //go:generate mockgen -destination=../mocks/mock_source_metric.go -package=mocks github.com/google/ts-bridge/tsbridge SourceMetric
@@ -56,30 +72,30 @@ type StackdriverAdapter interface {
 	Close() error
 }
 
-// UpdateAllMetrics updates all metrics listed in a given config.
-func UpdateAllMetrics(ctx context.Context, c *MetricConfig, sd StackdriverAdapter, parallelism int, s *StatsCollector) (errors []string) {
+// UpdateAll updates all metrics listed in a given config.
+func (m *Metrics) UpdateAll(ctx context.Context, c *MetricConfig, parallelism int) (errors []string) {
 	oldestWrite := time.Now()
 	defer func(start time.Time) {
-		stats.Record(ctx, s.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
-		stats.Record(ctx, s.OldestMetricAge.M(int64(time.Since(oldestWrite)/time.Millisecond)))
+		stats.Record(ctx, m.StatsCollector.TotalImportLatency.M(int64(time.Since(start)/time.Millisecond)))
+		stats.Record(ctx, m.StatsCollector.OldestMetricAge.M(int64(time.Since(oldestWrite)/time.Millisecond)))
 	}(time.Now())
 
 	errchan := make(chan string, len(c.Metrics()))
 	sem := make(chan bool, parallelism)
 	var wg sync.WaitGroup
 
-	for _, m := range c.Metrics() {
+	for _, mc := range c.Metrics() {
 		sem <- true
 		wg.Add(1)
 		go func(metric *Metric) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			err := metric.Update(ctx, sd, s)
+			err := metric.Update(ctx, m.SDClient, m.StatsCollector)
 			if err != nil {
 				errchan <- err.Error()
 			}
-		}(m)
+		}(mc)
 	}
 	wg.Wait()
 	close(errchan)

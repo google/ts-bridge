@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/google/ts-bridge/boltdb"
 	"github.com/google/ts-bridge/datastore"
@@ -17,11 +16,8 @@ import (
 )
 
 var (
-	sdClient     *stackdriver.Adapter
-	sdClientOnce sync.Once
-
-	statsCollector     *tsbridge.StatsCollector
-	statsCollectorOnce sync.Once
+	sdClient       *stackdriver.Adapter
+	statsCollector *tsbridge.StatsCollector
 )
 
 // LoadStorageEngine is a helper function to load the correct storage manager depending on settings
@@ -43,40 +39,18 @@ func LoadStorageEngine(ctx context.Context, config *tsbridge.Config) (storage.Ma
 }
 
 // Sync updates all configured metrics.
-func Sync(ctx context.Context, config *tsbridge.Config) error {
+func Sync(ctx context.Context, config *tsbridge.Config, metrics *tsbridge.Metrics) error {
 	store, err := LoadStorageEngine(ctx, config)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
 
-	metrics, err := tsbridge.NewMetricConfig(ctx, config, store)
+	metricCfg, err := tsbridge.NewMetricConfig(ctx, config, store)
 	if err != nil {
 		return err
 	}
-
-	var errSync []error
-
-	sdClientOnce.Do(func() {
-		sdClient, err = stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
-		if err != nil {
-			errSync = append(errSync, fmt.Errorf("unable to initialize stackdriver adapter: %v", err))
-		}
-	})
-
-	statsCollectorOnce.Do(func() {
-		statsCollector, err = tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject, config.Options.MonitoringBackends)
-		if err != nil {
-			errSync = append(errSync, fmt.Errorf("unable to initialize stats collector: %v", err))
-		}
-	})
-
-	// Process errors from Once.Do blocks since we cannot return in those
-	if len(errSync) > 0 {
-		return fmt.Errorf("errors occured during sync init: %v", errSync)
-	}
-
-	if errs := tsbridge.UpdateAllMetrics(ctx, metrics, sdClient, config.Options.UpdateParallelism, statsCollector); errs != nil {
+	if errs := metrics.UpdateAll(ctx, metricCfg, config.Options.UpdateParallelism); errs != nil {
 		msg := strings.Join(errs, "; ")
 		return errors.New(msg)
 	}

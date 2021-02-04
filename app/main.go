@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/ts-bridge/stackdriver"
 	"github.com/google/ts-bridge/tasks"
 	"github.com/google/ts-bridge/web"
 
@@ -136,8 +137,13 @@ func main() {
 		SyncPeriod:               *syncPeriod,
 	})
 
-	h := web.NewHandler(config)
+	metrics, err := CreateMetrics(context.Background(), config)
+	if err != nil {
+		log.Fatalf("failed initializing adaptor/collector dependencies: %v", err)
+	}
+	defer cleanup(metrics)
 
+	h := web.NewHandler(config, metrics)
 	http.HandleFunc("/", h.Index)
 	http.HandleFunc("/sync", h.Sync)
 	http.HandleFunc("/cleanup", h.Cleanup)
@@ -154,7 +160,7 @@ func main() {
 	if !env.IsAppEngine() {
 		log.Debug("Running outside of appengine, starting up a sync loop...")
 		ctx, cancel := context.WithCancel(context.Background())
-		go syncLoop(ctx, cancel, config)
+		go syncLoop(ctx, cancel, config, metrics)
 	}
 
 	// Build a connection string, e.g. ":8080"
@@ -166,7 +172,7 @@ func main() {
 
 }
 
-func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config) {
+func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config, metrics *tsbridge.Metrics) {
 	defer cancel()
 	for {
 		select {
@@ -174,13 +180,33 @@ func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.C
 			log.Debugf("Goroutines: %v", runtime.NumGoroutine())
 			ctx, cancel := context.WithTimeout(ctx, config.Options.UpdateTimeout)
 			log.WithContext(ctx).Debugf("Running sync...")
-			if err := tasks.Sync(ctx, config); err != nil {
+			if err := tasks.Sync(ctx, config, metrics); err != nil {
 				log.WithContext(ctx).Errorf("error running sync() routine: %v", err)
 			}
 			cancel()
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// CreateMetrics returns a Metrics struct containing external dependencies.
+func CreateMetrics(ctx context.Context, config *tsbridge.Config) (*tsbridge.Metrics, error) {
+	sd, err := stackdriver.NewAdapter(ctx, config.Options.SDLookBackInterval)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize stackdriver adapter: %v", err)
+	}
+	sc, err := tsbridge.NewCollector(ctx, config.Options.SDInternalMetricsProject, config.Options.MonitoringBackends)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize stats collector: %v", err)
+	}
+	return tsbridge.New(ctx, sd, sc), nil
+}
+
+func cleanup(metrics *tsbridge.Metrics) {
+	defer metrics.StatsCollector.Close()
+	if err := metrics.SDClient.Close(); err != nil {
+		log.Fatalf("Could not close Stackdriver client: %v", err)
 	}
 }
 
