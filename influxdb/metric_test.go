@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/mocks"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
@@ -36,6 +37,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	log.SetOutput(ioutil.Discard)
 	ctx, cancel := context.WithCancel(context.Background())
 	// Save the emulator's quit channel.
 	quit := datastore.Emulator(ctx)
@@ -653,3 +655,28 @@ func TestStackdriverDataTimeAggCumulativeResponse(t *testing.T) {
 	expectedDesc, expectedTS = mustUnmarshalTimeSeries(expectedDescRaw, expectedTSRaw...)
 	compareTimeSeries(t, desc, expectedDesc, ts, expectedTS)
 }
+
+func benchmarkStackdriverData(filename string, b *testing.B) {
+	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
+	_, server := makeTestServer(filename)
+	defer server.Close()
+
+	c := &MetricConfig{
+		Query:    "metricquery",
+		Endpoint: server.URL,
+	}
+	m, _ := NewSourceMetric("metricname", c, time.Second, time.Hour)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		m.StackdriverData(ctx, time.Unix(1515000000, 0), &datastore.StoredMetricRecord{Storage: storage})
+	}
+}
+
+func BenchmarkStackdriverData10(b *testing.B)     { benchmarkStackdriverData("10_points.json", b) }
+func BenchmarkStackdriverData100(b *testing.B)    { benchmarkStackdriverData("100_points.json", b) }
+func BenchmarkStackdriverData1000(b *testing.B)   { benchmarkStackdriverData("1000_points.json", b) }
+func BenchmarkStackdriverData10000(b *testing.B)  { benchmarkStackdriverData("10000_points.json", b) }
+func BenchmarkStackdriverData100000(b *testing.B) { benchmarkStackdriverData("100000_points.json", b) }
