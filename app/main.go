@@ -33,6 +33,7 @@ import (
 	"github.com/google/ts-bridge/version"
 
 	"cloud.google.com/go/profiler"
+	"github.com/pkg/profile"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -97,6 +98,10 @@ var (
 	monitoringBackends = kingpin.Flag(
 		"stats-metric-exporters", "Monitoring backend(s) for internal metrics.",
 	).Envar("STATS_METRIC_EXPORTERS").Default("stackdriver").Enums("prometheus", "stackdriver")
+
+	enableLocalCPUProfiler = kingpin.Flag(
+		"enable-local-cpu-profiler", "Enable local CPU Profiler",
+	).Envar("ENABLE_LOCAL_CPU_PROFILER").Default("false").Bool()
 )
 
 func main() {
@@ -121,6 +126,11 @@ func main() {
 
 	if err := validateFlags(); err != nil {
 		log.Fatalf("Invalid flags: %v", err)
+	}
+
+	if *enableLocalCPUProfiler {
+		log.Debugf("CPU Profiler enabled.")
+		defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	}
 
 	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
