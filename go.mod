@@ -18,11 +18,10 @@ require (
 	github.com/influxdata/influxql v1.1.0
 	github.com/prometheus/client_golang v1.8.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
-	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/timshannon/bolthold v0.0.0-20200817130212-4a25ab140645
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
-	go.opencensus.io v0.22.5
+	go.opencensus.io v0.22.6
 	google.golang.org/api v0.38.0
 	google.golang.org/genproto v0.0.0-20210202153253-cf70463f6119
 	google.golang.org/grpc v1.35.0
