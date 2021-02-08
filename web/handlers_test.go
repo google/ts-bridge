@@ -1,16 +1,19 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/ts-bridge/tasks"
 	"github.com/google/ts-bridge/tsbridge"
 )
 
 func TestHealthHandler(t *testing.T) {
 	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{})
-	h := NewHandler(config, &tsbridge.Metrics{})
+	store, err := tasks.LoadStorageEngine(context.Background(), config)
+	h := NewHandler(config, &tsbridge.Metrics{}, store)
 
 	req, err := http.NewRequest("GET", "/health", nil)
 	if err != nil {
