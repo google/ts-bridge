@@ -18,7 +18,7 @@ func TestHealthHandler(t *testing.T) {
 		t.Run(storageEngineName, func(t *testing.T) {
 			config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
 				StorageEngine:    storageEngineName,
-				DatastoreProject: "foo",
+				DatastoreProject: "testapp",
 			})
 			store, err := tasks.LoadStorageEngine(context.Background(), config)
 			if err != nil {
@@ -28,7 +28,7 @@ func TestHealthHandler(t *testing.T) {
 
 			req, err := http.NewRequest("GET", "/health", nil)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Error while sending request for /health: %v", err)
 			}
 
 			rr := httptest.NewRecorder()
