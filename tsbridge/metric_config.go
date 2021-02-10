@@ -19,6 +19,9 @@ package tsbridge
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+
 	"github.com/google/ts-bridge/datadog"
 	"github.com/google/ts-bridge/env"
 	"github.com/google/ts-bridge/influxdb"
@@ -26,7 +29,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	validator "gopkg.in/validator.v2"
 	yaml "gopkg.in/yaml.v2"
-	"io/ioutil"
 )
 
 // MetricConfig is what the YAML configuration file gets deserialized to.
@@ -38,6 +40,8 @@ type MetricConfig struct {
 
 	// internal list of metrics that gets populated when configuration file is read.
 	metrics []*Metric
+
+	FileInfo *os.FileInfo
 }
 
 // DestinationConfig defines configuration for a Stackdriver project metrics are written to.
@@ -85,6 +89,12 @@ func NewMetricConfig(ctx context.Context, config *Config, storage storage.Manage
 	if err := validator.Validate(c); err != nil {
 		return nil, fmt.Errorf("configuration file validation error: %s", err)
 	}
+
+	fileInfo, err := os.Stat(config.Options.Filename)
+	if err != nil {
+		return nil, err
+	}
+	c.FileInfo = &fileInfo
 
 	destinations := make(map[string]string)
 	for _, d := range c.StackdriverDestinations {

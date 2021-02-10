@@ -18,17 +18,18 @@ import (
 )
 
 type Handler struct {
-	config  *tsbridge.Config
-	Metrics *tsbridge.Metrics
-	store   storage.Manager
+	config    *tsbridge.Config
+	Metrics   *tsbridge.Metrics
+	metricCfg *tsbridge.MetricConfig
+	store     storage.Manager
 }
 
 type HealthResponse struct {
 	Status string `json:"status,omitempty"`
 }
 
-func NewHandler(config *tsbridge.Config, metrics *tsbridge.Metrics, store storage.Manager) *Handler {
-	return &Handler{config: config, Metrics: metrics, store: store}
+func NewHandler(config *tsbridge.Config, metrics *tsbridge.Metrics, metricCfg *tsbridge.MetricConfig, store storage.Manager) *Handler {
+	return &Handler{config: config, Metrics: metrics, store: store, metricCfg: metricCfg}
 }
 
 // Sync is an HTTP wrapper around sync() method that is designed to be triggered by App Engine Cron.
@@ -43,7 +44,7 @@ func (h *Handler) Sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tasks.Sync(ctx, h.config, h.Metrics, h.store); err != nil {
+	if err := tasks.SyncMetrics(ctx, h.config, h.Metrics, h.metricCfg); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
 }

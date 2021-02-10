@@ -160,7 +160,12 @@ func main() {
 	}
 	defer store.Close()
 
-	h := web.NewHandler(config, metrics, store)
+	metricCfg, err := tsbridge.NewMetricConfig(context.Background(), config, store)
+	if err != nil {
+		log.Fatalf("failed to perform initial load of metric config: %v", err)
+	}
+
+	h := web.NewHandler(config, metrics, metricCfg, store)
 	http.HandleFunc("/", h.Index)
 	http.HandleFunc("/sync", h.Sync)
 	http.HandleFunc("/cleanup", h.Cleanup)
@@ -177,7 +182,7 @@ func main() {
 	if !env.IsAppEngine() {
 		log.Debug("Running outside of appengine, starting up a sync loop...")
 		ctx, cancel := context.WithCancel(context.Background())
-		go syncLoop(ctx, cancel, config, metrics, store)
+		go syncLoop(ctx, cancel, config, metrics, metricCfg, store)
 	}
 
 	// Build a connection string, e.g. ":8080"
@@ -189,16 +194,20 @@ func main() {
 
 }
 
-func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config, metrics *tsbridge.Metrics, store storage.Manager) {
+func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config, metrics *tsbridge.Metrics, metricCfg *tsbridge.MetricConfig, store storage.Manager) {
 	defer cancel()
+
 	for {
 		select {
 		case <-time.After(config.Options.SyncPeriod):
 			log.Debugf("Goroutines: %v", runtime.NumGoroutine())
 			ctx, cancel := context.WithTimeout(ctx, config.Options.UpdateTimeout)
 			log.WithContext(ctx).Debugf("Running sync...")
-			if err := tasks.Sync(ctx, config, metrics, store); err != nil {
-				log.WithContext(ctx).Errorf("error running sync() routine: %v", err)
+			if err := tasks.SyncMetricConfig(ctx, config, store, metricCfg); err != nil {
+				log.WithContext(ctx).Errorf("error running SyncMetricConfig() within sync() routine: %v", err)
+			}
+			if err := tasks.SyncMetrics(ctx, config, metrics, metricCfg); err != nil {
+				log.WithContext(ctx).Errorf("error running SyncMetrics() routine: %v", err)
 			}
 			cancel()
 		case <-ctx.Done():

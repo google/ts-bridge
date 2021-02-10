@@ -1,0 +1,16 @@
+datadog_metrics:
+  - name: metric1
+    query: "query one"
+    api_key: xxx
+    application_key: xxx
+    destination: stackdriver
+influxdb_metrics:
+  - name: metric2
+    query: "query two"
+    database: db
+    endpoint: localhost:8888
+    destination: stackdriver
+stackdriver_destinations:
+  - name: stackdriver
+  - name: another_stackdriver
+    project_id: "another-projectname"
