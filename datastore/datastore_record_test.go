@@ -26,7 +26,7 @@ import (
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// Save the emulator's quit channel.
-	quit := Emulator(ctx)
+	quit := Emulator(ctx, true)
 	code := m.Run()
 	cancel()
 	// Wait for channel close before exiting the test suite

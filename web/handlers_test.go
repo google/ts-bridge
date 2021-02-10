@@ -4,11 +4,24 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/tasks"
 	"github.com/google/ts-bridge/tsbridge"
 )
+
+func TestMain(m *testing.M) {
+	ctx, cancel := context.WithCancel(context.Background())
+	// Save the emulator's quit channel.
+	quit := datastore.Emulator(ctx, false)
+	code := m.Run()
+	cancel()
+	// Wait for channel close before exiting the test suite
+	<-quit
+	os.Exit(code)
+}
 
 func TestHealthHandler(t *testing.T) {
 	for _, storageEngineName := range []string{
