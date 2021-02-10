@@ -79,13 +79,21 @@ jobs:
         # See: https://github.com/actions/toolkit/issues/399
         continue-on-error: ${{ matrix.prerelease }}
         run: |
+          echo "Sourcing Google Cloud SDK path helper..."
           source $HOME/google-cloud-sdk/path.bash.inc
+          echo "Downloading go modules..."
           go mod download
-          go install github.com/go-bindata/go-bindata/v3/go-bindata
-          go install github.com/golang/mock/mockgen
-          go test -v -timeout=30s -json ./... > test.json
+          echo "Installing development deps..."
+          go install -v github.com/go-bindata/go-bindata/v3/go-bindata
+          go install -v github.com/golang/mock/mockgen
+          echo "Running go tests..."
+          go test -v -timeout=60s ./...
+          echo "Running go tests again with JSON output for annotations..."
+          go test -v -timeout=60s -json ./... > test.json
+          echo "Running gofmt..."
           gofmt -w $(go list -f '{{.Dir}}' ./...)
-          go generate ./...
+          echo "Running go generate..."
+          go generate -v ./...
 
       - name: Annotate Tests
         # Annotate failed tests
