@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/google/ts-bridge/env"
+	"github.com/google/ts-bridge/storage"
 	"github.com/google/ts-bridge/tasks"
 	"github.com/google/ts-bridge/tsbridge"
 
@@ -19,14 +20,15 @@ import (
 type Handler struct {
 	config  *tsbridge.Config
 	Metrics *tsbridge.Metrics
+	store   storage.Manager
 }
 
 type HealthResponse struct {
 	Status string `json:"status,omitempty"`
 }
 
-func NewHandler(config *tsbridge.Config, metrics *tsbridge.Metrics) *Handler {
-	return &Handler{config: config, Metrics: metrics}
+func NewHandler(config *tsbridge.Config, metrics *tsbridge.Metrics, store storage.Manager) *Handler {
+	return &Handler{config: config, Metrics: metrics, store: store}
 }
 
 // Sync is an HTTP wrapper around sync() method that is designed to be triggered by App Engine Cron.
@@ -41,7 +43,7 @@ func (h *Handler) Sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tasks.Sync(ctx, h.config, h.Metrics); err != nil {
+	if err := tasks.Sync(ctx, h.config, h.Metrics, h.store); err != nil {
 		logAndReturnError(ctx, w, err)
 	}
 }
@@ -55,7 +57,7 @@ func (h *Handler) Cleanup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tasks.Cleanup(ctx, h.config); err != nil {
+	if err := tasks.Cleanup(ctx, h.config, h.store); err != nil {
 		logAndReturnError(ctx, w, err)
 		return
 	}
@@ -98,14 +100,7 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	storage, err := tasks.LoadStorageEngine(ctx, h.config)
-	if err != nil {
-		logAndReturnError(ctx, w, err)
-		return
-	}
-	defer storage.Close()
-
-	metrics, err := tsbridge.NewMetricConfig(ctx, h.config, storage)
+	metrics, err := tsbridge.NewMetricConfig(ctx, h.config, h.store)
 	if err != nil {
 		logAndReturnError(ctx, w, err)
 		return

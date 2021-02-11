@@ -29,10 +29,12 @@ import (
 	"github.com/google/ts-bridge/web"
 
 	"github.com/google/ts-bridge/env"
+	"github.com/google/ts-bridge/storage"
 	"github.com/google/ts-bridge/tsbridge"
 	"github.com/google/ts-bridge/version"
 
 	"cloud.google.com/go/profiler"
+	"github.com/pkg/profile"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -97,6 +99,10 @@ var (
 	monitoringBackends = kingpin.Flag(
 		"stats-metric-exporters", "Monitoring backend(s) for internal metrics.",
 	).Envar("STATS_METRIC_EXPORTERS").Default("stackdriver").Enums("prometheus", "stackdriver")
+
+	enableLocalCPUProfiler = kingpin.Flag(
+		"enable-local-cpu-profiler", "Enable local CPU Profiler",
+	).Envar("ENABLE_LOCAL_CPU_PROFILER").Default("false").Bool()
 )
 
 func main() {
@@ -123,6 +129,11 @@ func main() {
 		log.Fatalf("Invalid flags: %v", err)
 	}
 
+	if *enableLocalCPUProfiler {
+		log.Debugf("CPU Profiler enabled.")
+		defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	}
+
 	config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
 		Filename:                 *metricConfig,
 		MinPointAge:              *minPointAge,
@@ -143,7 +154,13 @@ func main() {
 	}
 	defer cleanup(metrics)
 
-	h := web.NewHandler(config, metrics)
+	store, err := tasks.LoadStorageEngine(context.Background(), config)
+	if err != nil {
+		log.Fatalf("failed to load storage engine: %v", err)
+	}
+	defer store.Close()
+
+	h := web.NewHandler(config, metrics, store)
 	http.HandleFunc("/", h.Index)
 	http.HandleFunc("/sync", h.Sync)
 	http.HandleFunc("/cleanup", h.Cleanup)
@@ -151,7 +168,7 @@ func main() {
 
 	// Run a cleanup on startup
 	log.Debugf("Performing startup cleanup...")
-	if err := tasks.Cleanup(context.Background(), config); err != nil {
+	if err := tasks.Cleanup(context.Background(), config, store); err != nil {
 		log.Fatalf("error running the Cleanup() routine: %v", err)
 	}
 
@@ -160,7 +177,7 @@ func main() {
 	if !env.IsAppEngine() {
 		log.Debug("Running outside of appengine, starting up a sync loop...")
 		ctx, cancel := context.WithCancel(context.Background())
-		go syncLoop(ctx, cancel, config, metrics)
+		go syncLoop(ctx, cancel, config, metrics, store)
 	}
 
 	// Build a connection string, e.g. ":8080"
@@ -172,7 +189,7 @@ func main() {
 
 }
 
-func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config, metrics *tsbridge.Metrics) {
+func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.Config, metrics *tsbridge.Metrics, store storage.Manager) {
 	defer cancel()
 	for {
 		select {
@@ -180,7 +197,7 @@ func syncLoop(ctx context.Context, cancel context.CancelFunc, config *tsbridge.C
 			log.Debugf("Goroutines: %v", runtime.NumGoroutine())
 			ctx, cancel := context.WithTimeout(ctx, config.Options.UpdateTimeout)
 			log.WithContext(ctx).Debugf("Running sync...")
-			if err := tasks.Sync(ctx, config, metrics); err != nil {
+			if err := tasks.Sync(ctx, config, metrics, store); err != nil {
 				log.WithContext(ctx).Errorf("error running sync() routine: %v", err)
 			}
 			cancel()

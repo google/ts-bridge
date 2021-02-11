@@ -18,11 +18,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"os"
 	"os/exec"
@@ -41,13 +42,13 @@ const fakeProjectID = "testapp"
 //
 //	 ctx, cancel := context.WithCancel(context.Background())
 //	 // Save the emulator's quit channel.
-//	 quit := Emulator(ctx)
+//	 quit := Emulator(ctx, true)
 //	 code := m.Run()
 //	 cancel()
 //	 // Wait for channel close
 //	 <-quit
 //
-func Emulator(ctx context.Context) <-chan struct{} {
+func Emulator(ctx context.Context, setGAE bool) <-chan struct{} {
 
 	// Create a child logger and set it to process newlines since emulator gives a lot of output.
 	l := log.WithContext(ctx)
@@ -113,8 +114,10 @@ func Emulator(ctx context.Context) <-chan struct{} {
 	}
 
 	// This env is set to pretend we're running on AppEngine
-	if err := os.Setenv("GAE_ENV", "standard"); err != nil {
-		log.Fatalf("couldn't set env GAE_ENV: %v", err)
+	if setGAE {
+		if err := os.Setenv("GAE_ENV", "standard"); err != nil {
+			log.Fatalf("couldn't set env GAE_ENV: %v", err)
+		}
 	}
 
 	return quit

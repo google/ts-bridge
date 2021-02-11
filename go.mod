@@ -11,11 +11,12 @@ require (
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
-	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.3
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/influxdata/influxql v1.1.0
+	github.com/pkg/profile v1.2.1
 	github.com/prometheus/client_golang v1.8.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/timshannon/bolthold v0.0.0-20200817130212-4a25ab140645

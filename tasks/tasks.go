@@ -39,13 +39,7 @@ func LoadStorageEngine(ctx context.Context, config *tsbridge.Config) (storage.Ma
 }
 
 // Sync updates all configured metrics.
-func Sync(ctx context.Context, config *tsbridge.Config, metrics *tsbridge.Metrics) error {
-	store, err := LoadStorageEngine(ctx, config)
-	if err != nil {
-		return err
-	}
-	defer store.Close()
-
+func Sync(ctx context.Context, config *tsbridge.Config, metrics *tsbridge.Metrics, store storage.Manager) error {
 	metricCfg, err := tsbridge.NewMetricConfig(ctx, config, store)
 	if err != nil {
 		return err
@@ -58,13 +52,7 @@ func Sync(ctx context.Context, config *tsbridge.Config, metrics *tsbridge.Metric
 }
 
 // Cleanup removes obsolete metric records.
-func Cleanup(ctx context.Context, config *tsbridge.Config) error {
-	store, err := LoadStorageEngine(ctx, config)
-	if err != nil {
-		return err
-	}
-	defer store.Close()
-
+func Cleanup(ctx context.Context, config *tsbridge.Config, store storage.Manager) error {
 	metrics, err := tsbridge.NewMetricConfig(ctx, config, store)
 	if err != nil {
 		return err
