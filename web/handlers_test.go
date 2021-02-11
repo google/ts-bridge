@@ -35,13 +35,13 @@ func TestHealthHandler(t *testing.T) {
 			})
 			store, err := tasks.LoadStorageEngine(context.Background(), config)
 			if err != nil {
-				t.Fatalf("Error while loading storage engine: %v", err)
+				t.Fatalf("error while loading storage engine: %v", err)
 			}
 			h := NewHandler(config, &tsbridge.Metrics{}, store)
 
 			req, err := http.NewRequest("GET", "/health", nil)
 			if err != nil {
-				t.Fatalf("Error while sending request for /health: %v", err)
+				t.Fatalf("error while sending request for /health: %v", err)
 			}
 
 			rr := httptest.NewRecorder()
