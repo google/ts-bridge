@@ -40,25 +40,22 @@ func LoadStorageEngine(ctx context.Context, config *tsbridge.Config) (storage.Ma
 	}
 }
 
-// Checks if the metric config file has been updated, and updates the cached file stats if it has.
-func metricConfigFileUpdated(ctx context.Context, config *tsbridge.Config, metricCfgFs *os.FileInfo) (bool, error) {
-	currMetricCfgFs, err := os.Stat(config.Options.Filename)
+// isMetricCfgUpdated checks if the metric config file has been updated.
+func isMetricCfgUpdated(ctx context.Context, filename string, metricCfgFs *os.FileInfo) (bool, error) {
+	fs, err := os.Stat(filename)
 	if err != nil {
 		return false, err
 	}
-	if (*metricCfgFs).ModTime() != currMetricCfgFs.ModTime() && (*metricCfgFs).Size() != currMetricCfgFs.Size() {
-		return true, nil
-	}
-	return false, nil
+	return (*metricCfgFs).ModTime() != fs.ModTime() && (*metricCfgFs).Size() != fs.Size(), nil
 }
 
 // SyncMetricConfig ensures that metric config is always synced with the metric config file. This should only be called when !env.IsAppEngine().
 func SyncMetricConfig(ctx context.Context, config *tsbridge.Config, store storage.Manager, metricCfg *tsbridge.MetricConfig) error {
-	updateRequired, err := metricConfigFileUpdated(ctx, config, metricCfg.FileInfo)
+	update, err := isMetricCfgUpdated(ctx, config.Options.Filename, metricCfg.FileInfo)
 	if err != nil {
 		return err
 	}
-	if updateRequired {
+	if update {
 		updatedMetricCfg, err := tsbridge.NewMetricConfig(ctx, config, store)
 		log.Debug("Metric Config file changes reloaded.")
 		if err != nil {

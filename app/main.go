@@ -148,19 +148,20 @@ func main() {
 		SyncPeriod:               *syncPeriod,
 	})
 
-	metrics, err := CreateMetrics(context.Background(), config)
+	ctx, cancel := context.WithCancel(context.Background())
+	metrics, err := CreateMetrics(ctx, config)
 	if err != nil {
 		log.Fatalf("failed initializing adaptor/collector dependencies: %v", err)
 	}
 	defer cleanup(metrics)
 
-	store, err := tasks.LoadStorageEngine(context.Background(), config)
+	store, err := tasks.LoadStorageEngine(ctx, config)
 	if err != nil {
 		log.Fatalf("failed to load storage engine: %v", err)
 	}
 	defer store.Close()
 
-	metricCfg, err := tsbridge.NewMetricConfig(context.Background(), config, store)
+	metricCfg, err := tsbridge.NewMetricConfig(ctx, config, store)
 	if err != nil {
 		log.Fatalf("failed to perform initial load of metric config: %v", err)
 	}
@@ -173,7 +174,7 @@ func main() {
 
 	// Run a cleanup on startup
 	log.Debugf("Performing startup cleanup...")
-	if err := tasks.Cleanup(context.Background(), config, store); err != nil {
+	if err := tasks.Cleanup(ctx, config, store); err != nil {
 		log.Fatalf("error running the Cleanup() routine: %v", err)
 	}
 
@@ -181,7 +182,6 @@ func main() {
 	// TODO(temikus): refactor this to run exactly every SyncPeriod and skip sync if one is already active
 	if !env.IsAppEngine() {
 		log.Debug("Running outside of appengine, starting up a sync loop...")
-		ctx, cancel := context.WithCancel(context.Background())
 		go syncLoop(ctx, cancel, config, metrics, metricCfg, store)
 	}
 
