@@ -37,7 +37,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	log.SetOutput(ioutil.Discard)
 	ctx, cancel := context.WithCancel(context.Background())
 	// Save the emulator's quit channel.
 	quit := datastore.Emulator(ctx)
@@ -657,6 +656,7 @@ func TestStackdriverDataTimeAggCumulativeResponse(t *testing.T) {
 }
 
 func benchmarkStackdriverData(filename string, b *testing.B) {
+	log.SetLevel(log.WarnLevel)
 	ctx := context.Background()
 	storage := datastore.New(ctx, &datastore.Options{})
 	_, server := makeTestServer(filename)
