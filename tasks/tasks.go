@@ -46,7 +46,7 @@ func isMetricCfgUpdated(ctx context.Context, filename string, metricCfgFs *os.Fi
 	if err != nil {
 		return false, err
 	}
-	return (*metricCfgFs).ModTime() != fs.ModTime() && (*metricCfgFs).Size() != fs.Size(), nil
+	return (*metricCfgFs).ModTime() != fs.ModTime(), nil
 }
 
 // SyncMetricConfig ensures that metric config is always synced with the metric config file. This should only be called when !env.IsAppEngine().
