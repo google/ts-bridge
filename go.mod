@@ -23,7 +23,7 @@ require (
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.22.6
-	google.golang.org/api v0.39.0
+	google.golang.org/api v0.40.0
 	google.golang.org/genproto v0.0.0-20210202153253-cf70463f6119
 	google.golang.org/grpc v1.35.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
