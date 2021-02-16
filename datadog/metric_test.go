@@ -24,7 +24,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/mocks"
@@ -351,3 +354,25 @@ func TestCounterStartTime(t *testing.T) {
 		})
 	}
 }
+
+func benchmarkStackdriverData(filename string, b *testing.B) {
+	log.SetLevel(log.WarnLevel)
+	ctx := context.Background()
+	storage := datastore.New(ctx, &datastore.Options{})
+	_, server := makeTestServer(filename)
+	defer server.Close()
+	m, _ := NewSourceMetric("metricname", &MetricConfig{Query: "metricquery"}, time.Second, time.Hour)
+
+	m.client.SetBaseUrl(server.URL)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		m.StackdriverData(ctx, time.Unix(1515000000, 0), &datastore.StoredMetricRecord{Storage: storage})
+	}
+}
+
+func BenchmarkStackdriverData10(b *testing.B)     { benchmarkStackdriverData("10_points.json", b) }
+func BenchmarkStackdriverData100(b *testing.B)    { benchmarkStackdriverData("100_points.json", b) }
+func BenchmarkStackdriverData1000(b *testing.B)   { benchmarkStackdriverData("1000_points.json", b) }
+func BenchmarkStackdriverData10000(b *testing.B)  { benchmarkStackdriverData("10000_points.json", b) }
+func BenchmarkStackdriverData100000(b *testing.B) { benchmarkStackdriverData("100000_points.json", b) }

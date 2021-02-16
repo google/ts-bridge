@@ -83,3 +83,15 @@ To unpack this:
   there are multiple measurements for this metric reported per minute. See
   [rollup documentation](https://docs.datadoghq.com/graphing/functions/rollup/)
   for more.
+
+## Benchmark Tests
+
+Benchmarking tests have been added to analyse the performance of data conversion
+under large loads. These tests will use testdata with an exponential amount of data
+points (10, 100, 1000 and 10000), stored in the form of JSON files.
+
+You can run these tests using the following command inside this directory:
+
+```
+go test -bench=. -benchtime=30s
+```

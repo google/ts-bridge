@@ -68,6 +68,7 @@ jobs:
         run: |
           curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-307.0.0-linux-x86_64.tar.gz | tar xfz - -C $HOME
           $HOME/google-cloud-sdk/bin/gcloud components install beta cloud-datastore-emulator
+          sudo apt-get update
           sudo apt-get install openjdk-8-jre-headless
 
       - name: Run tests
