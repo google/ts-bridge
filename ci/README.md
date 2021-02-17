@@ -6,9 +6,7 @@ use on Google Container Registry. ts-bridge images are built using
 through [cloudbuild.yaml](https://github.com/google/ts-bridge/blob/master/ci/cloudbuild.yaml).
 To view the documentation for dev builds, please refer to [CI with GitHub Actions](https://github.com/google/ts-bridge/blob/master/.github/workflows/README.md).
 
-<!-- TODO: remove the first sentence below when GCP is made public. -->
-**WIP:** The images stored on GCR have not yet been made public. We are waiting
-for permissions internally. Once they have been made public, anyone can pull them from:
+Images are published externally and anyone can pull them from:
 
 `gcr.io/cre-tools/ts-bridge:{tag}`
 
