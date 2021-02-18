@@ -10,6 +10,7 @@ import (
 	"github.com/google/ts-bridge/datastore"
 	"github.com/google/ts-bridge/tasks"
 	"github.com/google/ts-bridge/tsbridge"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestMain(m *testing.M) {
@@ -30,14 +31,21 @@ func TestHealthHandler(t *testing.T) {
 	} {
 		t.Run(storageEngineName, func(t *testing.T) {
 			config := tsbridge.NewConfig(&tsbridge.ConfigOptions{
-				StorageEngine:    storageEngineName,
 				DatastoreProject: "testapp",
+				Filename:         "testdata/valid.yaml",
+				StorageEngine:    storageEngineName,
 			})
 			store, err := tasks.LoadStorageEngine(context.Background(), config)
 			if err != nil {
 				t.Fatalf("error while loading storage engine: %v", err)
 			}
-			h := NewHandler(config, &tsbridge.Metrics{}, store)
+
+			metricCfg, err := tsbridge.NewMetricConfig(context.Background(), config, store)
+			if err != nil {
+				log.Fatalf("failed to perform initial load of metric config: %v", err)
+			}
+
+			h := NewHandler(config, &tsbridge.Metrics{}, metricCfg, store)
 
 			req, err := http.NewRequest("GET", "/health", nil)
 			if err != nil {
