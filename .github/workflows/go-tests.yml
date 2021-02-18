@@ -43,14 +43,17 @@ jobs:
             "${{ needs.project-go-version.outputs.go-version }}",
             "1.14.x",
             "1.15.x",
+            "1.16.x",
           ]
         prerelease: [false]
-        # Pre-release tests provide early feedback if something breaks in the
-        # next Go release.
-        include:
-          - name: "(Pre-release)"
-            go-version: "1.16.0-rc1"
-            prerelease: true
+        # Uncomment to provide early feedback if something breaks in the next Go release.
+        # TODO(temikus): Golang makes rc versions unavailable after a release so perhaps 
+        # a better workflow is needed here than hardcoding the version.
+        # 
+        #include:
+        #  - name: "(Pre-release)"
+        #    go-version: "1.16.0-rc1"
+        #    prerelease: true
       # Prevent GHA from cancelling other matrix jobs if one fails
       fail-fast: false
     steps:
