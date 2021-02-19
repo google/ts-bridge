@@ -20,14 +20,8 @@ The complete flowchart for CI is shown below:
 
 ### Triggers
 Cloud Build triggers are configured purely on Google Cloud Platform (GCP, not on
-GitHub), which this repo is connected to. The CloudBuild trigger events which will be used for this project are as follows:
-
-* A trigger on every push to a released tag
-* (WIP) A scheduled trigger to run every period
-
-<!-- TODO: remove the line below when GCP is made public. -->
-Please note that currently Cloud Build triggers can only be accessed and modified by
-maintainers from Google.
+GitHub), which this repo is connected to. The CloudBuild trigger will occur on
+every push to a released tag.
 
 ### cloudbuild.yaml
 When a trigger event occurs, the
