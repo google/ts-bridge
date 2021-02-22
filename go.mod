@@ -14,12 +14,11 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.3
-	github.com/google/martian v2.1.0+incompatible
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/influxdata/influxql v1.1.0
 	github.com/pkg/profile v1.5.0
 	github.com/prometheus/client_golang v1.8.0 // indirect
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.0
 	github.com/timshannon/bolthold v0.0.0-20200817130212-4a25ab140645
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
