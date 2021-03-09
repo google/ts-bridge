@@ -8,7 +8,7 @@ import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
 	metric "google.golang.org/genproto/googleapis/api/metric"
-	monitoring "google.golang.org/genproto/googleapis/monitoring/v3"
+	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
 	reflect "reflect"
 )
 
@@ -50,7 +50,7 @@ func (mr *MockMetricClientMockRecorder) Close() *gomock.Call {
 }
 
 // CreateMetricDescriptor mocks base method
-func (m *MockMetricClient) CreateMetricDescriptor(arg0 context.Context, arg1 *monitoring.CreateMetricDescriptorRequest) (*metric.MetricDescriptor, error) {
+func (m *MockMetricClient) CreateMetricDescriptor(arg0 context.Context, arg1 *v3.CreateMetricDescriptorRequest) (*metric.MetricDescriptor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMetricDescriptor", arg0, arg1)
 	ret0, _ := ret[0].(*metric.MetricDescriptor)
@@ -65,7 +65,7 @@ func (mr *MockMetricClientMockRecorder) CreateMetricDescriptor(arg0, arg1 interf
 }
 
 // CreateTimeSeries mocks base method
-func (m *MockMetricClient) CreateTimeSeries(arg0 context.Context, arg1 *monitoring.CreateTimeSeriesRequest) error {
+func (m *MockMetricClient) CreateTimeSeries(arg0 context.Context, arg1 *v3.CreateTimeSeriesRequest) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateTimeSeries", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -79,7 +79,7 @@ func (mr *MockMetricClientMockRecorder) CreateTimeSeries(arg0, arg1 interface{})
 }
 
 // DeleteMetricDescriptor mocks base method
-func (m *MockMetricClient) DeleteMetricDescriptor(arg0 context.Context, arg1 *monitoring.DeleteMetricDescriptorRequest) error {
+func (m *MockMetricClient) DeleteMetricDescriptor(arg0 context.Context, arg1 *v3.DeleteMetricDescriptorRequest) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteMetricDescriptor", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -93,7 +93,7 @@ func (mr *MockMetricClientMockRecorder) DeleteMetricDescriptor(arg0, arg1 interf
 }
 
 // GetMetricDescriptor mocks base method
-func (m *MockMetricClient) GetMetricDescriptor(arg0 context.Context, arg1 *monitoring.GetMetricDescriptorRequest) (*metric.MetricDescriptor, error) {
+func (m *MockMetricClient) GetMetricDescriptor(arg0 context.Context, arg1 *v3.GetMetricDescriptorRequest) (*metric.MetricDescriptor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetricDescriptor", arg0, arg1)
 	ret0, _ := ret[0].(*metric.MetricDescriptor)
@@ -108,10 +108,10 @@ func (mr *MockMetricClientMockRecorder) GetMetricDescriptor(arg0, arg1 interface
 }
 
 // ListTimeSeries mocks base method
-func (m *MockMetricClient) ListTimeSeries(arg0 context.Context, arg1 *monitoring.ListTimeSeriesRequest) ([]*monitoring.TimeSeries, error) {
+func (m *MockMetricClient) ListTimeSeries(arg0 context.Context, arg1 *v3.ListTimeSeriesRequest) ([]*v3.TimeSeries, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListTimeSeries", arg0, arg1)
-	ret0, _ := ret[0].([]*monitoring.TimeSeries)
+	ret0, _ := ret[0].([]*v3.TimeSeries)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

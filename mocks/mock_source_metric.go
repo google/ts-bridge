@@ -9,7 +9,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	storage "github.com/google/ts-bridge/storage"
 	metric "google.golang.org/genproto/googleapis/api/metric"
-	monitoring "google.golang.org/genproto/googleapis/monitoring/v3"
+	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
 	reflect "reflect"
 	time "time"
 )
@@ -52,11 +52,11 @@ func (mr *MockSourceMetricMockRecorder) Query() *gomock.Call {
 }
 
 // StackdriverData mocks base method
-func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 storage.MetricRecord) (*metric.MetricDescriptor, []*monitoring.TimeSeries, error) {
+func (m *MockSourceMetric) StackdriverData(arg0 context.Context, arg1 time.Time, arg2 storage.MetricRecord) (*metric.MetricDescriptor, []*v3.TimeSeries, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StackdriverData", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*metric.MetricDescriptor)
-	ret1, _ := ret[1].([]*monitoring.TimeSeries)
+	ret1, _ := ret[1].([]*v3.TimeSeries)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

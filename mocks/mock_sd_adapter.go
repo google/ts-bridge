@@ -8,7 +8,7 @@ import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
 	metric "google.golang.org/genproto/googleapis/api/metric"
-	monitoring "google.golang.org/genproto/googleapis/monitoring/v3"
+	v3 "google.golang.org/genproto/googleapis/monitoring/v3"
 	reflect "reflect"
 	time "time"
 )
@@ -51,7 +51,7 @@ func (mr *MockStackdriverAdapterMockRecorder) Close() *gomock.Call {
 }
 
 // CreateTimeseries mocks base method
-func (m *MockStackdriverAdapter) CreateTimeseries(arg0 context.Context, arg1, arg2 string, arg3 *metric.MetricDescriptor, arg4 []*monitoring.TimeSeries) error {
+func (m *MockStackdriverAdapter) CreateTimeseries(arg0 context.Context, arg1, arg2 string, arg3 *metric.MetricDescriptor, arg4 []*v3.TimeSeries) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateTimeseries", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
