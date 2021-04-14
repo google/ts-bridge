@@ -16,6 +16,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/influxdata/influxql v1.1.0
+	github.com/kisielk/errcheck v1.6.0 // indirect
 	github.com/pkg/profile v1.5.0
 	github.com/prometheus/client_golang v1.8.0 // indirect
 	github.com/sirupsen/logrus v1.8.0
@@ -23,6 +24,8 @@ require (
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.23.0
+	golang.org/x/mod v0.4.2 // indirect
+	golang.org/x/sys v0.0.0-20210412220455-f1c623a9e750 // indirect
 	google.golang.org/api v0.40.0
 	google.golang.org/genproto v0.0.0-20210202153253-cf70463f6119
 	google.golang.org/grpc v1.36.0
