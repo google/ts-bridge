@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.76.0
-	cloud.google.com/go/datastore v1.4.0
+	cloud.google.com/go/datastore v1.5.0
 	contrib.go.opencensus.io/exporter/prometheus v0.2.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.5
 	github.com/aws/aws-sdk-go v1.35.28 // indirect
@@ -27,7 +27,7 @@ require (
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/sys v0.0.0-20210412220455-f1c623a9e750 // indirect
 	google.golang.org/api v0.40.0
-	google.golang.org/genproto v0.0.0-20210202153253-cf70463f6119
+	google.golang.org/genproto v0.0.0-20210226172003-ab064af71705
 	google.golang.org/grpc v1.36.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
