@@ -5,7 +5,7 @@ go 1.13
 require (
 	cloud.google.com/go v0.76.0
 	cloud.google.com/go/datastore v1.5.0
-	contrib.go.opencensus.io/exporter/prometheus v0.2.0
+	contrib.go.opencensus.io/exporter/prometheus v0.3.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.5
 	github.com/aws/aws-sdk-go v1.35.28 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
@@ -18,7 +18,6 @@ require (
 	github.com/influxdata/influxql v1.1.0
 	github.com/kisielk/errcheck v1.6.0 // indirect
 	github.com/pkg/profile v1.5.0
-	github.com/prometheus/client_golang v1.8.0 // indirect
 	github.com/sirupsen/logrus v1.8.0
 	github.com/timshannon/bolthold v0.0.0-20200817130212-4a25ab140645
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
