@@ -27,7 +27,7 @@ require (
 	golang.org/x/sys v0.0.0-20210412220455-f1c623a9e750 // indirect
 	google.golang.org/api v0.43.0
 	google.golang.org/genproto v0.0.0-20210402141018-6c239bbf2bb1
-	google.golang.org/grpc v1.36.1
+	google.golang.org/grpc v1.37.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
 	gopkg.in/yaml.v2 v2.4.0
