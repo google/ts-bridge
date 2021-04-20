@@ -25,7 +25,7 @@ require (
 	go.opencensus.io v0.23.0
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/sys v0.0.0-20210412220455-f1c623a9e750 // indirect
-	google.golang.org/api v0.43.0
+	google.golang.org/api v0.44.0
 	google.golang.org/genproto v0.0.0-20210402141018-6c239bbf2bb1
 	google.golang.org/grpc v1.36.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
