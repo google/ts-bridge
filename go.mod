@@ -6,9 +6,7 @@ require (
 	cloud.google.com/go v0.82.0
 	cloud.google.com/go/datastore v1.5.0
 	contrib.go.opencensus.io/exporter/prometheus v0.3.0
-	contrib.go.opencensus.io/exporter/stackdriver v0.13.5
-	github.com/aws/aws-sdk-go v1.35.28 // indirect
-	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
+	contrib.go.opencensus.io/exporter/stackdriver v0.13.6
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/gogo/protobuf v1.3.2 // indirect
