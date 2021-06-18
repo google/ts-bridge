@@ -3,7 +3,7 @@ module github.com/google/ts-bridge
 go 1.13
 
 require (
-	cloud.google.com/go v0.82.0
+	cloud.google.com/go v0.83.0
 	cloud.google.com/go/datastore v1.5.0
 	contrib.go.opencensus.io/exporter/prometheus v0.3.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.6
@@ -21,8 +21,8 @@ require (
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.23.0
-	google.golang.org/api v0.47.0
-	google.golang.org/genproto v0.0.0-20210517163617-5e0236093d7a
+	google.golang.org/api v0.48.0
+	google.golang.org/genproto v0.0.0-20210604141403-392c879c8b08
 	google.golang.org/grpc v1.38.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
