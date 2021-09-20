@@ -3,7 +3,7 @@ module github.com/google/ts-bridge
 go 1.13
 
 require (
-	cloud.google.com/go/datastore v1.5.0
+	cloud.google.com/go/datastore v1.6.0
 	cloud.google.com/go/monitoring v0.2.0
 	cloud.google.com/go/profiler v0.1.0
 	cloud.google.com/go/trace v0.1.0 // indirect
