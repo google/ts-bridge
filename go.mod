@@ -5,7 +5,7 @@ go 1.13
 require (
 	cloud.google.com/go/datastore v1.6.0
 	cloud.google.com/go/monitoring v0.3.0
-	cloud.google.com/go/profiler v0.1.0
+	cloud.google.com/go/profiler v0.1.1
 	cloud.google.com/go/trace v0.1.0 // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.8
