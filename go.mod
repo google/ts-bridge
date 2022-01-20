@@ -30,3 +30,5 @@ require (
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
 	gopkg.in/yaml.v2 v2.4.0
 )
+
+replace golang.org/x/text 0.3.6 => golang.org/x/text 0.3.7
