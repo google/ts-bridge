@@ -43,8 +43,9 @@ cloud.google.com/go/datastore v1.6.0 h1:wZaHIqu1tebvGRYhVgcfNX6jN2q638OGO23JyJck
 cloud.google.com/go/datastore v1.6.0/go.mod h1:q3ZJj1GMQRdU0OCv5XXpCqfLqHHZnI5zcumkvuYDmHI=
 cloud.google.com/go/iam v0.1.1 h1:4CapQyNFjiksks1/x7jsvsygFPhihslYk5GptIrlX68=
 cloud.google.com/go/iam v0.1.1/go.mod h1:CKqrcnI/suGpybEHxZ7BMehL0oA4LpdyJdUlTl9jVMw=
-cloud.google.com/go/monitoring v1.1.0 h1:ZnyNdf/XRcynMmKzRSNTOdOyYPs6G7do1l2D2hIvIKo=
 cloud.google.com/go/monitoring v1.1.0/go.mod h1:L81pzz7HKn14QCMaCs6NTQkdBnE87TElyanS95vIcl4=
+cloud.google.com/go/monitoring v1.2.0 h1:fEvQITrhVcPM6vuDQcgPMbU5kZFeQFwZmE7v6+S8BPo=
+cloud.google.com/go/monitoring v1.2.0/go.mod h1:tE8I08OzjWmXLhCopnPaUDpfGOEJOonfWXGR9E9SsFo=
 cloud.google.com/go/profiler v0.1.1 h1:seMHZtcgOwZXAOKDZuW2sN3u1yKjYG19dUkElb4mbcQ=
 cloud.google.com/go/profiler v0.1.1/go.mod h1:zG22vSCuJKJMvIlLpX3FhNjOsifaoLdPAYc4yLw5Iw4=
 cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2kNxGRt3I=
