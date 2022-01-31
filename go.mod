@@ -26,7 +26,7 @@ require (
 	go.opencensus.io v0.23.0
 	google.golang.org/api v0.65.0
 	google.golang.org/genproto v0.0.0-20220111164026-67b88f271998
-	google.golang.org/grpc v1.43.0
+	google.golang.org/grpc v1.44.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
 	gopkg.in/yaml.v2 v2.4.0
