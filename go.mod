@@ -4,9 +4,8 @@ go 1.16
 
 require (
 	cloud.google.com/go/datastore v1.6.0
-	cloud.google.com/go/iam v0.1.1 // indirect
 	cloud.google.com/go/monitoring v1.2.0
-	cloud.google.com/go/profiler v0.1.2
+	cloud.google.com/go/profiler v0.2.0
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.10
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
