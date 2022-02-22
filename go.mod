@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	cloud.google.com/go/datastore v1.6.0
-	cloud.google.com/go/monitoring v1.2.0
+	cloud.google.com/go/monitoring v1.3.0
 	cloud.google.com/go/profiler v0.2.0
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.10
@@ -23,8 +23,8 @@ require (
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.23.0
-	google.golang.org/api v0.66.0
-	google.golang.org/genproto v0.0.0-20220114231437-d2e6a121cae0
+	google.golang.org/api v0.67.0
+	google.golang.org/genproto v0.0.0-20220207164111-0872dc986b00
 	google.golang.org/grpc v1.44.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
