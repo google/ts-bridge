@@ -18,7 +18,7 @@ jobs:
         run: echo "image-tag=ts-bridge:test" >> $GITHUB_ENV
 
       - name: Build Docker Image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           push: false
           tags: ${{ env.image-tag }}
