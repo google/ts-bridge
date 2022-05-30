@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/monitoring v1.5.0
 	cloud.google.com/go/profiler v0.3.0
 	contrib.go.opencensus.io/exporter/prometheus v0.4.1
-	contrib.go.opencensus.io/exporter/stackdriver v0.13.10
+	contrib.go.opencensus.io/exporter/stackdriver v0.13.12
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-bindata/go-bindata/v3 v3.1.3
