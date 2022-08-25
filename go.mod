@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	cloud.google.com/go/datastore v1.8.0
-	cloud.google.com/go/monitoring v1.5.0
+	cloud.google.com/go/monitoring v1.6.0
 	cloud.google.com/go/profiler v0.3.0
 	contrib.go.opencensus.io/exporter/prometheus v0.4.1
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.10
@@ -24,7 +24,7 @@ require (
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.23.0
 	google.golang.org/api v0.93.0
-	google.golang.org/genproto v0.0.0-20220624142145-8cd45d7dbd1f
+	google.golang.org/genproto v0.0.0-20220808131553-a91ffa7f803e
 	google.golang.org/grpc v1.49.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/validator.v2 v2.0.0-20200605151824-2b28d334fa05
