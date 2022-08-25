@@ -18,7 +18,7 @@ require (
 	github.com/influxdata/influxql v1.1.0
 	github.com/kisielk/errcheck v1.6.0 // indirect
 	github.com/pkg/profile v1.6.0
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 	github.com/timshannon/bolthold v0.0.0-20200817130212-4a25ab140645
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
