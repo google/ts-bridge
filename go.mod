@@ -31,4 +31,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-replace golang.org/x/text v0.3.6 => golang.org/x/text v0.3.7
+replace golang.org/x/text v0.3.6 => golang.org/x/text v0.3.8 // CVE-2021-38561
+
+replace golang.org/x/text v0.3.7 => golang.org/x/text v0.3.8 // CVE-2022-32149
