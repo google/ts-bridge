@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	cloud.google.com/go/datastore v1.8.0
-	cloud.google.com/go/monitoring v1.6.0
+	cloud.google.com/go/monitoring v1.7.0
 	cloud.google.com/go/profiler v0.3.0
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.10
