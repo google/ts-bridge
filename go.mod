@@ -22,7 +22,7 @@ require (
 	github.com/timshannon/bolthold v0.0.0-20200817130212-4a25ab140645
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible
 	go.etcd.io/bbolt v1.3.5 // indirect
-	go.opencensus.io v0.23.0
+	go.opencensus.io v0.24.0
 	google.golang.org/api v0.101.0
 	google.golang.org/genproto v0.0.0-20221018160656-63c7b68cfc55
 	google.golang.org/grpc v1.50.1
