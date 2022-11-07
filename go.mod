@@ -34,3 +34,5 @@ require (
 replace golang.org/x/text v0.3.6 => golang.org/x/text v0.3.8 // CVE-2021-38561
 
 replace golang.org/x/text v0.3.7 => golang.org/x/text v0.3.8 // CVE-2022-32149
+
+replace github.com/prometheus/prometheus v0.35.0 => github.com/prometheus/prometheus/v2 v2.7.1 // CVE-2019-3826
