@@ -42,7 +42,7 @@ jobs:
         run: echo "go-version=$(cat .go-version)" >> $GITHUB_ENV
 
       - name: Set up Go according to .go-version
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env.go-version }}
 
