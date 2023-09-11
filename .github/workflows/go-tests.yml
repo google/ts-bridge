@@ -23,7 +23,7 @@ jobs:
       go-version: ${{ steps.go.outputs.go-version }}
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Go version
         id: go
@@ -56,7 +56,7 @@ jobs:
       fail-fast: false
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go with ${{ matrix.go-version }}
         uses: actions/setup-go@v4
