@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Create a test tag
         run: echo "image-tag=ts-bridge:test" >> $GITHUB_ENV
