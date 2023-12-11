@@ -59,7 +59,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Go with ${{ matrix.go-version }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
           stable: "false"
