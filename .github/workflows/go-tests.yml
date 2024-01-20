@@ -27,7 +27,7 @@ jobs:
 
       - name: Set Go version
         id: go
-        run: echo "::set-output name=go-version::$(cat .go-version)"
+        run: echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
 
   install-and-run:
     name: Tests Go ${{ matrix.go-version }} ${{ matrix.name }}
